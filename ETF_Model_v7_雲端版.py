@@ -24,6 +24,7 @@ import requests
 import talib
 from tqdm import tqdm
 import os
+import io
 
 warnings.filterwarnings("ignore")
 
@@ -145,6 +146,83 @@ def calc_dca_with_dividends(price_series, div_series):
     total_rt = df_calc["return"].iloc[-1]
     return total_rt, df_calc["return"]
 
+#%% 抓取上市櫃ETF代號
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Referer": "https://www.tpex.org.tw/web/stock/aftertrading/daily_close_quotes/stk_quote.php?l=zh-tw",
+}
+
+# ---------------------------------------------------------
+# 1. 抓取上市 ETF (TWSE)
+# ---------------------------------------------------------
+print("正在取得上市 ETF 清單 (TWSE)...")
+twse_direct_url = "https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL?response=open_data"
+
+twse_list = []
+try:
+    resp = requests.get(twse_direct_url, headers=headers, timeout=20)
+    resp.encoding = "utf-8"
+    df_twse = pd.read_csv(io.StringIO(resp.text))
+    
+    code_col = [c for c in df_twse.columns if "代號" in c][0]
+    name_col = [c for c in df_twse.columns if "名稱" in c][0]
+    
+    for _, row in df_twse.iterrows():
+        code = str(row[code_col]).replace('"', '').strip()
+        name = str(row[name_col]).replace('"', '').strip()
+        if code.startswith("00") and (len(code) in [5, 6]):
+            twse_list.append({
+                "證券代號": f"{code}.TW",
+                "證券名稱": name
+            })
+    print(f"成功取得上市 ETF: {len(twse_list)} 檔")
+except Exception as e:
+    print(f"上市 ETF 擷取異常: {e}")
+
+# ---------------------------------------------------------
+# 2. 抓取上櫃 ETF (TPEx) - 改用穩定 JSON 介面
+# ---------------------------------------------------------
+print("正在取得上櫃 ETF 清單 (TPEx)...")
+# 該端點專門回傳每日收盤行情 JSON，不需預先指定日期即可抓取最新一日
+tpex_json_url = "https://www.tpex.org.tw/web/stock/aftertrading/daily_close_quotes/stk_quote_result.php?l=zh-tw&o=json"
+
+tpex_list = []
+try:
+    tpex_resp = requests.get(tpex_json_url, headers=headers, timeout=20)
+    tpex_data = tpex_resp.json()
+    
+    # 櫃買中心回傳結構中的資料列為 aaData 或 tables[0]['data']
+    rows = tpex_data.get("aaData", [])
+    if not rows and "tables" in tpex_data and len(tpex_data["tables"]) > 0:
+        rows = tpex_data["tables"][0].get("data", [])
+
+    for item in rows:
+        # 每列陣列索引 0 為代號，索引 1 為名稱
+        code = str(item[0]).strip()
+        name = str(item[1]).strip()
+        
+        # 上櫃 ETF 特徵：代號以 00 開頭（如 00679B, 00720B 等多數為債券 ETF）
+        if code.startswith("00"):
+            tpex_list.append({
+                "證券代號": f"{code}.TWO",
+                "證券名稱": name
+            })
+    print(f"成功取得上櫃 ETF: {len(tpex_list)} 檔")
+except Exception as e:
+    print(f"上櫃 ETF 擷取異常: {e}")
+
+# ---------------------------------------------------------
+# 3. 合併、排序並匯出為 Excel
+# ---------------------------------------------------------
+all_data = twse_list + tpex_list
+
+
+df_result = pd.DataFrame(all_data)
+df_result = df_result.drop_duplicates(subset=["證券代號"]).sort_values(by="證券代號").reset_index(drop=True)
+
+ticker_list = df_result.set_index('證券代號', inplace = False)
+
 #%% 3. 主流程與資料抓取
 
 start_time = time.time()
@@ -153,7 +231,7 @@ day_end = (dt.datetime.today() + dt.timedelta(days=1)).strftime("%Y-%m-%d")
 k_th = 50
 
 # 載入名單
-ticker_list = pd.read_excel("台股ETF名單.xlsx", sheet_name="ETF總表", index_col=0)
+
 stock_list = ticker_list.index.tolist()
 if "0050.TW" not in stock_list:
     stock_list.append("0050.TW")
