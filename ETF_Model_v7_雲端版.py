@@ -23,6 +23,7 @@ import pandas as pd
 import requests
 import talib
 from tqdm import tqdm
+import os
 
 warnings.filterwarnings("ignore")
 
