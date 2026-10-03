@@ -617,9 +617,10 @@ def send_telegram_message(bot_token, chat_id, message_text, parse_mode='HTML'):
 today_str = dt.datetime.today().strftime('%Y-%m-%d')
 
 # 1. 篩選勝過大盤且位階合理標的
-win_base_df = result[(result['K值'] < k_th) & (result['評分'] == 2)].sort_values(
+win_base_df = result[(result['K值'] < k_th) & (result['評分'] == 2) & (result['報酬差'] >= 0.1)].sort_values(
     by=['年化報酬率'], ascending=False
 )
+win_base_df['平均成交金額_萬'] = int(win_base_df['平均成交金額']/10000)
 
 # 2. 篩選位階升溫 (過熱) 標的
 heated_df = result[(result['K值'] >= 85)].sort_values(
@@ -640,6 +641,7 @@ if len(win_base_df) > 0:
     lines.append(
         f'• <b>{row["ticker"]}</b> (<code>{sym}</code>)\n'
         f'  現價: <code>{row["price"]:.2f}</code> | K值: <code>{row["K值"]}</code>'
+        f' | 平均成交金額: <code>{row["平均成交金額_萬"]}</code> 萬'
         f' | 勝率: <code>{row["勝率(%)"]}%</code>\n'
         f'  年化報酬率: <b>{row["年化報酬率"]}%</b>'
     )
