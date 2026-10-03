@@ -575,7 +575,7 @@ col_list = [
     "成交金額",
 ]
 
-# result[col_list].to_excel(p_file)
+result[col_list].to_excel(p_file)
 end_time = time.time()
 print(f"ETF模型全部運算完成，耗時：{(end_time - start_time)/60:.1f}分鐘")
 
