@@ -1,0 +1,53 @@
+name: Daily ETF Screening & Notification
+
+on:
+  schedule:
+    # UTC 時間 13:30 對應台灣時間(UTC+8) 21:30 (每天)
+    - cron: '30 13 * * *'
+  workflow_dispatch: # 允許在網頁介面隨時手動點擊觸發
+
+jobs:
+  run-screening:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 簽出專案代碼 (Checkout)
+        uses: actions.checkout@v4
+
+      - name: 設定 Python 環境
+        uses: actions.setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: 安裝 TA-Lib 底層 C-Library
+        run: |
+          wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+          tar -xzf ta-lib-0.4.0-src.tar.gz
+          cd ta-lib/
+          ./configure --prefix=/usr
+          make
+          sudo make install
+          cd ..
+          rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
+
+      - name: 安裝 Python 相依套件
+        run: |
+          python -m pip install --upgrade pip
+          pip install ta-lib
+          pip install -r requirements.txt
+
+      - name: 執行 ETF 模型運算與推播
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          python ETF_Model_v7.py
+
+      - name: 將更新後的 Excel 存回 GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add ETF動態清單.xlsx
+          # 檢查是否有檔案更新，若有變動才 commit，避免無更動時報錯
+          git diff --staged --quiet || (git commit -m "Auto-update ETF list [$(date +'%Y-%m-%d')]" && git push)
