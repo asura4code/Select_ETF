@@ -3,7 +3,7 @@ name: Daily ETF Screening & Notification
 on:
   schedule:
     # UTC 時間 10:29 對應台灣時間(UTC+8) 18:29 (每天)
-    - cron: '39 15 * * *'
+    - cron: '39 7 * * *'
   workflow_dispatch: # 允許在網頁介面隨時手動點擊觸發
 
 jobs:
