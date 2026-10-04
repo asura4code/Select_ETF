@@ -795,13 +795,15 @@ else:
 
 # 區塊三：新增與移除標的 (若有讀取到歷史檔案)
 if p_result is not None:
-  lines.append('━━━━━━━━━━━━━━━━━━')
+  
   if len(insert) > 0:
     new_tickers = ', '.join(insert['ticker'].tolist()[:5])
-    lines.append(f'✨ <b>[評分2] 今日新增</b>: {new_tickers}')
+    lines.append('━━━━━━━━━━━━━━━━━━')
+    lines.append(f'✨ <b>今日新增</b>: {new_tickers}')
   if len(remove) > 0:
     del_tickers = ', '.join(remove['ticker'].tolist()[:5])
-    lines.append(f'🔻 <b>[評分2] 今日移除</b>: {del_tickers}')
+    lines.append('━━━━━━━━━━━━━━━━━━')
+    lines.append(f'🔻 <b>今日移除</b>: {del_tickers}')
 
 message_html = '\n'.join(lines)
 
