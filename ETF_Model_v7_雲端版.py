@@ -272,7 +272,8 @@ base_df = all_data["0050.TW"]
 etf_list_records = []
 score_dict = {}  # 存放各標的各交易日的動態評分
 
-candidates = [s for s in prices_df.columns if s != "0050.TW"]
+# candidates = [s for s in prices_df.columns if s != "0050.TW"]
+candidates = [s for s in prices_df.columns]
 
 for t in candidates:
     t_df = all_data[t][["Close", "Dividend"]].dropna(subset=["Close"])
