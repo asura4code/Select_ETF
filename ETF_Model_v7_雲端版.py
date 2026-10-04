@@ -171,7 +171,8 @@ try:
     for _, row in df_twse.iterrows():
         code = str(row[code_col]).replace('"', '').strip()
         name = str(row[name_col]).replace('"', '').strip()
-        if code.startswith("00") and (len(code) in [5, 6]):
+        # 只要以 00 開頭即為 ETF（涵蓋 0050, 0056 等 4 碼標的與 00878, 00632R 等）
+        if code.startswith("00"):
             twse_list.append({
                 "證券代號": f"{code}.TW",
                 "證券名稱": name
@@ -338,6 +339,56 @@ print(f"滿足正報酬且打敗 0050 的 ETF 共：{len(mvp_list)} 檔")
 
 #%% 5. 技術指標計算與回測 (保留 v6 多筆加碼攤平進出場機制)
 
+def calc_taiwan_kd(high, low, close, n=9, k_period=3, d_period=3):
+  """計算符合台灣市場慣例的 KD 指標 (初始值 K=50, D=50，遞迴平滑)
+
+  :param high: 最高價序列 (numpy array 或 pandas Series)
+  :param low: 最低價序列
+  :param close: 收盤價序列
+  :param n: RSV 週期 (預設 9)
+  :param k_period: K 平滑週期 (預設 3)
+  :param d_period: D 平滑週期 (預設 3)
+  :return: (k_series, d_series) 均為 numpy array
+  """
+  length = len(close)
+  k_arr = np.full(length, np.nan)
+  d_arr = np.full(length, np.nan)
+
+  if length < n:
+    return k_arr, d_arr
+
+  # 計算滾動最高價與最低價 (含當日的前 n 日)
+  s_high = pd.Series(high)
+  s_low = pd.Series(low)
+  s_close = pd.Series(close)
+
+  rolling_max = s_high.rolling(window=n).max().values
+  rolling_min = s_low.rolling(window=n).min().values
+
+  # 計算 RSV
+  denominator = rolling_max - rolling_min
+  # 避免最高價等於最低價除以 0 的情況
+  rsv = np.where(denominator != 0, (s_close.values - rolling_min) / denominator * 100, 50.0)
+
+  # 平滑係數： (3-1)/3 = 2/3 與 1/3
+  alpha_k = 1.0 / k_period
+  alpha_d = 1.0 / d_period
+
+  # 第 n-1 筆（即第 n 個交易日，索引從 0 開始）為第一個有效 RSV
+  # 其前一日（n-2）預設初值為 50
+  prev_k = 50.0
+  prev_d = 50.0
+
+  for i in range(n - 1, length):
+    curr_k = (1.0 - alpha_k) * prev_k + alpha_k * rsv[i]
+    curr_d = (1.0 - alpha_d) * prev_d + alpha_d * curr_k
+    k_arr[i] = curr_k
+    d_arr[i] = curr_d
+    prev_k = curr_k
+    prev_d = curr_d
+
+  return k_arr, d_arr
+
 t4 = time.time()
 tech = pd.DataFrame(
     columns=["price", "20dma", "Lower_band", "K值", "成交金額"]
@@ -368,16 +419,17 @@ for stock in tqdm(mvp_list.index, desc="計算技術指標與回測"):
         std20[i] = np.std(close[i - 19 : i + 1])
     lower_band = ma20 - 2 * std20
 
-    slowk, slowd = talib.STOCH(
-        high,
-        low,
-        close,
-        fastk_period=9,
-        slowk_period=3,
-        slowk_matype=0,
-        slowd_period=3,
-        slowd_matype=0,
-    )
+    # slowk, slowd = talib.STOCH(
+    #     high,
+    #     low,
+    #     close,
+    #     fastk_period=9,
+    #     slowk_period=3,
+    #     slowk_matype=0,
+    #     slowd_period=3,
+    #     slowd_matype=0,
+    # )
+    slowk, slowd = calc_taiwan_kd(high, low, close, n=9, k_period=3, d_period=3)
 
     df_stock["20dma"] = ma20
     df_stock["20d_std"] = std20
@@ -659,7 +711,7 @@ result[col_list].to_excel(p_file)
 end_time = time.time()
 print(f"ETF模型全部運算完成，耗時：{(end_time - start_time)/60:.1f}分鐘")
 
-#%%
+#%% 7. 組裝推播內容並發送 Telegram 通知
 import requests
 
 def send_telegram_message(bot_token, chat_id, message_text, parse_mode='HTML'):
@@ -690,16 +742,13 @@ def send_telegram_message(bot_token, chat_id, message_text, parse_mode='HTML'):
     print(f'❌ Telegram 連線異常: {e}')
     return False
 
-# ==============================================================================
-# 7. 組裝推播內容並發送 Telegram 通知
-# ==============================================================================
 today_str = dt.datetime.today().strftime('%Y-%m-%d')
 
 # 1. 篩選勝過大盤且位階合理標的
 win_base_df = result[(result['K值'] < k_th) & (result['評分'] == 2) & (result['報酬差'] >= 0.1)].sort_values(
     by=['年化報酬率'], ascending=False
 )
-win_base_df['平均成交金額_萬'] = int(win_base_df['平均成交金額']/10000)
+
 
 # 2. 篩選位階升溫 (過熱) 標的
 heated_df = result[(result['K值'] >= 85)].sort_values(
@@ -708,13 +757,15 @@ heated_df = result[(result['K值'] >= 85)].sort_values(
 
 # 3. 建立 HTML 排版內容
 lines = [
-    f'📊 <b>【ETF 動態量化日報】</b> <code>{today_str}</code>',
+    f'📈 <b>【動態 ETF 清單】</b> <code>{today_str}</code>',
     '━━━━━━━━━━━━━━━━━━',
 ]
 
 # 區塊一：勝過大盤標的
-lines.append(f'🏆 <b>績效打敗大盤 (K &lt; {k_th}) 共 {len(win_base_df)} 檔：</b>')
+lines.append(f'🏆 <b>布局價值 共 {len(win_base_df)} 檔：</b>')
 if len(win_base_df) > 0:
+  win_base_df['平均成交金額_萬'] = (win_base_df['平均成交金額']/10000).astype(int)
+  win_base_df['年化報酬率_int'] = win_base_df['年化報酬率'].astype(int)
   for sym, row in win_base_df.iterrows():
     # 呈現：名稱(代號) / 現價 / K值 / 勝率 / 年化
     lines.append(
@@ -722,7 +773,7 @@ if len(win_base_df) > 0:
         f'  現價: <code>{row["price"]:.2f}</code> | K值: <code>{row["K值"]}</code>'
         f' | 平均成交金額: <code>{row["平均成交金額_萬"]}</code> 萬'
         f' | 勝率: <code>{row["勝率(%)"]}%</code>\n'
-        f'  年化報酬率: <b>{row["年化報酬率"]}%</b>'
+        f'  年化報酬率: <b>{row["年化報酬率_int"]}%</b>'
     )
 else:
   lines.append('<i>（今日無符合條件標的）</i>')
@@ -731,16 +782,20 @@ lines.append('━━━━━━━━━━━━━━━━━━')
 
 # 區塊二：位階過熱警戒
 if len(heated_df) > 0:
-  lines.append(f'🔥 <b>位階升溫警戒 (K &gt; 85) 共 {len(heated_df)} 檔：</b>')
+  lines.append(f'🔥 <b>位階升溫 共 {len(heated_df)} 檔：</b>')
+  heated_df['年化報酬率_int'] = heated_df['年化報酬率'].astype(int)
   for sym, row in heated_df.iterrows():
     lines.append(
         f'• <b>{row["ticker"]}</b> (<code>{sym}</code>) | 現價:'
         f' <code>{row["price"]:.2f}</code> | K值: <code>{row["K值"]}</code>'
+        f' | 年化報酬率: <code>{row["年化報酬率_int"]}%</code>\n'
     )
-  lines.append('━━━━━━━━━━━━━━━━━━')
+else:
+  lines.append('<i>（今日無符合條件標的）</i>')
 
 # 區塊三：新增與移除標的 (若有讀取到歷史檔案)
 if p_result is not None:
+  lines.append('━━━━━━━━━━━━━━━━━━')
   if len(insert) > 0:
     new_tickers = ', '.join(insert['ticker'].tolist()[:5])
     lines.append(f'✨ <b>[評分2] 今日新增</b>: {new_tickers}')
@@ -755,9 +810,3 @@ TG_BOT_TOKEN = os.getenv('TG_BOT_TOKEN')
 TG_CHAT_ID = os.getenv('TG_CHAT_ID')
 
 send_telegram_message(TG_BOT_TOKEN, TG_CHAT_ID, message_html)
-
-#%%
-# ```<FollowUp>
-# - 是否需要協助在回測區間內加入**手續費與證券交易稅**的扣抵試算？
-# - 目前定期定額報酬率以「日定額累積」評估，是否需要提供「月定額（如每月特定日扣款）」的計算模式作交叉比對？
-# - 若需要直接在腳本完成後透過 LINE Notify 或 Telegram Bot 發送每日選股結果推播，我可以為您加上推播模組。
