@@ -776,7 +776,7 @@ if len(win_base_df) > 0:
         f'  現價: <code>{row["price"]:.2f}</code> | K值: <code>{row["K值"]}</code>'
         f' | 平均成交金額: <code>{row["平均成交金額_萬"]}</code> 萬'
         f' | 勝率: <code>{row["勝率(%)"]}%</code>\n'
-        f'  年化報酬率: <b>{row["年化報酬率_int"]}%</b>'
+        f'  年化報酬率: <b>{row["年化報酬率_int"]}%</b>\n'
     )
 else:
   lines.append('<i>（今日無符合條件標的）</i>')
@@ -803,12 +803,12 @@ if p_result is not None:
     insert['insert'] = insert['ticker'] + '(' + insert.index + ')'
     new_tickers = ', '.join(insert['insert'].tolist())
     lines.append('━━━━━━━━━━━━━━━━━━')
-    lines.append(f'✨ <b>今日新增</b>: {new_tickers}')
+    lines.append(f'✨ <b>今日新增</b>: \n{new_tickers}')
   if len(remove) > 0:
     remove['remove'] = remove['ticker'] + '(' + remove.index + ')'
     del_tickers = ', '.join(remove['remove'].tolist())
     lines.append('━━━━━━━━━━━━━━━━━━')
-    lines.append(f'🔻 <b>今日移除</b>: {del_tickers}')
+    lines.append(f'🔻 <b>今日移除</b>: \n{del_tickers}')
 
 message_html = '\n'.join(lines)
 
