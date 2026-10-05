@@ -556,6 +556,7 @@ result = result[
     (result["K值"] > 0)
     & (result["勝率(%)"] > 0)
     & (result["平均報酬率(%)"] > 0)
+    & ((result['報酬差'] >= 0.1) | (result['報酬差'] == 0))
 ]
 result["年化報酬率"] = (
     (result["總報酬率(%)"] / 100 + 1) ** (365 / result["總進場期間"]) - 1
