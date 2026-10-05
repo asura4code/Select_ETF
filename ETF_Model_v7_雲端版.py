@@ -799,11 +799,13 @@ else:
 if p_result is not None:
   
   if len(insert) > 0:
-    new_tickers = ', '.join(insert['ticker'].tolist()[:5])
+    insert['insert'] = insert['ticker'] + '(' + insert.index + ')'
+    new_tickers = ', '.join(insert['insert'].tolist())
     lines.append('━━━━━━━━━━━━━━━━━━')
     lines.append(f'✨ <b>今日新增</b>: {new_tickers}')
   if len(remove) > 0:
-    del_tickers = ', '.join(remove['ticker'].tolist()[:5])
+    remove['remove'] = remove['ticker'] + '(' + remove.index + ')'
+    del_tickers = ', '.join(remove['remove'].tolist())
     lines.append('━━━━━━━━━━━━━━━━━━')
     lines.append(f'🔻 <b>今日移除</b>: {del_tickers}')
 
