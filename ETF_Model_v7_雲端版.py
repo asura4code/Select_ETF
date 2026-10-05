@@ -614,38 +614,40 @@ if p_result is not None:
 
     print("[評分2]新增標的：")
     if len(insert) > 0:
-        print(
-            etf_list.loc[insert.index][
-                [
-                    "ticker",
-                    "成立以來報酬",
-                    "同期大盤報酬",
-                    "累計配息",
-                    "平均成交金額",
-                ]
-            ]
-            .sort_values(by=["ticker"], ascending=True)
-            .to_markdown()
-        )
+        # print(
+        #     etf_list.loc[insert.index][
+        #         [
+        #             "ticker",
+        #             "成立以來報酬",
+        #             "同期大盤報酬",
+        #             "累計配息",
+        #             "平均成交金額",
+        #         ]
+        #     ]
+        #     .sort_values(by=["ticker"], ascending=True)
+        #     .to_markdown()
+        # )
+        print(etf_list.loc[insert.index].sort_index().to_markdown())
     else:
         print("無新增標的")
     print("=" * 110)
 
     print("[評分2]移除標的：")
     if len(remove) > 0:
-        print(
-            etf_list.loc[remove.index][
-                [
-                    "ticker",
-                    "成立以來報酬",
-                    "同期大盤報酬",
-                    "累計配息",
-                    "平均成交金額",
-                ]
-            ]
-            .sort_values(by=["ticker"], ascending=True)
-            .to_markdown()
-        )
+        # print(
+        #     etf_list.loc[remove.index][
+        #         [
+        #             "ticker",
+        #             "成立以來報酬",
+        #             "同期大盤報酬",
+        #             "累計配息",
+        #             "平均成交金額",
+        #         ]
+        #     ]
+        #     .sort_values(by=["ticker"], ascending=True)
+        #     .to_markdown()
+        # )
+        print(etf_list.loc[remove.index].sort_index().to_markdown())
     else:
         print("無移除標的")
     print("=" * 110)
