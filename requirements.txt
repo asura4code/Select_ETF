@@ -1,15 +1,8 @@
+FinMind
+loguru
 pandas
 numpy
 requests
 tqdm
 openpyxl
 tabulate
-datetime
-io
-os
-sys
-time
-warnings
-FinMind.data
-loguru
-talib
