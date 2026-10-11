@@ -1,11 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Oct  3 20:41:50 2026
+Created on Sat Oct 10 19:09:04 2026
 
-@author: USER
+@author: Arsene
 """
 
-# -*- coding: utf-8 -*-
+# 程式目的；產出值得投資的台股ETF清單(全)
+# 程式邏輯：
+# 1. 考慮成立以來每日定額績效正報酬，且贏過大盤(0050)之ETF
+# 2. K值 < 50
+# 3. 紀錄近期首次入選日期
+
+# 2025/6/18 因股利資訊有誤，改為只參考資本利得報酬(不含息)
+# 2025/9/27 因原先抓取ETF名單網頁不見了，故改以excel維護名單，資料來源: https://tw.stock.yahoo.com/tw-etf/search
+# 2025/10/13 調升K值門檻至50
+
 """
 < 2026/10/3 >
 ETF動態篩選與回測模型 (v7 整合版)
@@ -13,31 +22,121 @@ ETF動態篩選與回測模型 (v7 整合版)
 - 定期定額：日買進 1 元，考慮除息當下的累積股數配息
 - 回測機制：保留 v6 之動態滾動評分與重疊加碼攤平進出場
 - 報表輸出：保留完整 Markdown 資訊提示與 Excel 動態清單更新
+
+< 2026/10/10 > v8 雲端版
+調整資料源：FinMind 抓日K + yfinance 抓配息
+手動維護ETF分割資訊
 """
+#%% 0. 匯入所需函式庫
 
 import datetime as dt
+import io
+import os
+import sys
 import time
 import warnings
+from FinMind.data import DataLoader
+from loguru import logger
 import numpy as np
 import pandas as pd
 import requests
 import talib
 from tqdm import tqdm
-import os
-import io
 
 warnings.filterwarnings("ignore")
 
-#%%  1. 核心資料爬取函式 (Yahoo Chart API + 配息解析)
+# 壓制 FinMind 底層冗長的 debug/info log
+logger.remove()
+logger.add(sys.stderr, level="WARNING")
 
-def fetch_yahoo_chart_data(ticker, start_date="2009-01-01", end_date=None):
+# 初始化 FinMind DataLoader
+dl = DataLoader()
+# 若有個人 Token，請在此帶入（未登入每小時限額約 300 次，帶 Token 為 600 次）：
+dl.login_by_token(api_token = os.getenv('FM_DL_TOKEN'))
+
+#%% 1. 自定義函數
+
+
+# 歷史台股 ETF 分割紀錄表：{代號: [(生效日期, 分割倍數)]}
+ETF_SPLITS_MAP = {
+    # 1. 元大台灣50: 2025/06/18 起 1 拆 4
+    "0050.TW": [
+        ("2025-06-18", 4.0),
+    ],
+    # 2. 國泰臺灣加權正2: 2025/06/11 起 1 拆 7
+    "00663L.TW": [
+        ("2025-06-11", 7.0),
+    ],
+    # 3. 富邦科技 (小台積): 2025/11/26 起 1 拆 7
+    "0052.TW": [
+        ("2025-11-26", 7.0),
+    ],
+    # 4. 元大台灣50正2: 2023 年 1 拆 6，2026 年 1 拆 22
+    "00631L.TW": [
+        ("2026-03-31", 22.0),
+    ],
+    "00685L.TW": [
+        ("2026-07-07", 24.0),
+    ],
+    # 5. 反向 ETF 反分割系列
+    "00632R.TW": [
+        ("2024-12-11", 1.0 / 7.0),  # 7 股併 1 股
+    ],
+    "00676R.TW": [
+        ("2025-02-19", 1.0 / 6.0),  # 6 股併 1 股
+    ],
+    "00674R.TW": [
+        ("2026-04-22", 0.2),  # 5 股併 1 股
+    ],
+}
+
+def apply_split_adjustment(df_price, ticker):
+    """依據分割對應表執行歷史行情向後還原 (Backward Adjustment)
+
+    :param df_price: DataFrame，索引為 'YYYY-MM-DD' 格式之日期字串
+    :param ticker: 包含後綴的股票代號 (如 '0050.TW')
+    :return: 完成還原的 DataFrame
     """
-    透過 Yahoo Finance v8 Chart API 抓取日K線與配息資料
-    """
+    if ticker not in ETF_SPLITS_MAP or df_price is None or df_price.empty:
+        return df_price
+
+    price_cols = [
+        col for col in ["Open", "High", "Low", "Close"] if col in df_price.columns
+    ]
+
+    # 依日期遞增排序處理，支援多階段分割
+    events = sorted(ETF_SPLITS_MAP[ticker], key=lambda x: x[0])
+
+    for split_date, ratio in events:
+        if ratio <= 0 or ratio == 1.0:
+            continue
+
+        # 篩選分割生效日「之前」的所有交易日
+        mask = df_price.index < split_date
+        if not mask.any():
+            continue
+
+        # 1. 歷史價格等比縮放
+        df_price.loc[mask, price_cols] = df_price.loc[mask, price_cols] / ratio
+
+        # 2. 歷史成交量等比調整 (股數放大)
+        if "Volume" in df_price.columns:
+            df_price.loc[mask, "Volume"] = df_price.loc[mask, "Volume"] * ratio
+
+        # 3. 歷史每股配息等比調整 (對齊分割後股數基準)
+        if "Dividend" in df_price.columns:
+            df_price.loc[mask, "Dividend"] = (
+                df_price.loc[mask, "Dividend"] / ratio
+            )
+
+    return df_price
+
+# 核心資料爬取函式 (FinMind 日K + yfinance 配息)
+
+def fetch_yahoo_dividends(ticker, start_date="2009-01-01", end_date=None):
+    """透過 Yahoo Finance v8 Chart API 抓取歷史配息資料"""
     if end_date is None:
-        end_date = (dt.datetime.today() + dt.timedelta(days=1)).strftime(
-            "%Y-%m-%d"
-        )
+        end_date = (dt.datetime.today() + dt.timedelta(days=1)).strftime("%Y-%m-%d")
 
     period1 = int(
         time.mktime(dt.datetime.strptime(start_date, "%Y-%m-%d").timetuple())
@@ -64,57 +163,79 @@ def fetch_yahoo_chart_data(ticker, start_date="2009-01-01", end_date=None):
     try:
         resp = requests.get(url, params=params, headers=headers, timeout=12)
         if resp.status_code != 200:
-            return None
+            return {}
 
         data = resp.json()
         chart = data.get("chart", {}).get("result")
         if not chart:
-            return None
+            return {}
 
-        result = chart[0]
-        timestamps = result.get("timestamp", [])
-        indicators = result.get("indicators", {})
-        quote = indicators.get("quote", [{}])[0]
-        adjclose = indicators.get("adjclose", [{}])[0].get("adjclose", [])
-
-        # 解析配息事件
-        events = result.get("events", {})
+        events = chart[0].get("events", {})
         div_events = events.get("dividends", {})
         div_dict = {}
-        for k, v in div_events.items():
-            d_str = dt.datetime.fromtimestamp(v.get("date", 0)).strftime(
-                "%Y-%m-%d"
-            )
+        for _, v in div_events.items():
+            d_str = dt.datetime.fromtimestamp(v.get("date", 0)).strftime("%Y-%m-%d")
             div_dict[d_str] = v.get("amount", 0.0)
 
-        dates = pd.to_datetime(timestamps, unit="s").strftime("%Y-%m-%d")
-        df = pd.DataFrame(
-            {
-                "Date": dates,
-                "Open": quote.get("open", []),
-                "High": quote.get("high", []),
-                "Low": quote.get("low", []),
-                "Close": quote.get("close", []),
-                "Volume": quote.get("volume", []),
-                "Adj Close": (
-                    adjclose if adjclose else quote.get("close", [])
-                ),
-            }
-        )
-
-        df["Dividend"] = df["Date"].map(div_dict).fillna(0.0)
-        df = df.dropna(subset=["Close"]).drop_duplicates(subset=["Date"])
-        df = df.set_index("Date").sort_index()
-
-        # 排除休市或異常交易日 (如 2025-09-29)
-        if "2025-09-29" in df.index:
-            df = df.drop("2025-09-29")
-
-        return df
+        return div_dict
     except Exception:
-        return None
+        return {}
 
-#%% 2. 定期定額計算函式 (模擬實際累積股數與配息收入)
+def fetch_etf_data(ticker, start_date="2009-01-01", end_date=None):
+  if end_date is None:
+    end_date = (dt.datetime.today() + dt.timedelta(days=1)).strftime("%Y-%m-%d")
+
+  # 1. 取得純代號 (0050.TW -> 0050)
+  stock_id = ticker.split(".")[0]
+
+  try:
+    # 2. FinMind 抓取原始日K
+    df_price = dl.taiwan_stock_daily(
+        stock_id=stock_id, start_date=start_date, end_date=end_date
+    )
+    if df_price is None or df_price.empty or len(df_price) < 20:
+      return None
+
+    df_price = df_price.rename(
+        columns={
+            "date": "Date",
+            "open": "Open",
+            "max": "High",
+            "min": "Low",
+            "close": "Close",
+            "Trading_Volume": "Volume",
+            "Trading_money": "Amount",
+        }
+    )
+    df_price["Date"] = pd.to_datetime(df_price["Date"]).dt.strftime("%Y-%m-%d")
+    df_price = df_price.set_index("Date").sort_index()
+
+    # 確保數值型態正確
+    numeric_cols = ["Open", "High", "Low", "Close", "Volume"]
+    for col in numeric_cols:
+      if col in df_price.columns:
+        df_price[col] = pd.to_numeric(df_price[col], errors="coerce")
+    df_price = df_price.dropna(subset=["Close"]).drop_duplicates()
+
+    # 3. Yahoo Chart API 抓取配息資訊
+    div_map = fetch_yahoo_dividends(
+        ticker, start_date=start_date, end_date=end_date
+    )
+    df_price["Dividend"] = df_price.index.map(div_map).fillna(0.0)
+
+    # 4. 執行分割與反分割還原 (確保 0050、00631L 等歷史走勢連續)
+    df_price = apply_split_adjustment(df_price, ticker)
+
+    # 5. 剔除特殊休市異常日
+    if "2025-09-29" in df_price.index:
+      df_price = df_price.drop("2025-09-29")
+
+    return df_price
+
+  except Exception:
+    return None
+
+# 定期定額計算函式 (模擬實際累積股數與配息收入)
 
 def calc_dca_with_dividends(price_series, div_series):
     """
@@ -146,7 +267,7 @@ def calc_dca_with_dividends(price_series, div_series):
     total_rt = df_calc["return"].iloc[-1]
     return total_rt, df_calc["return"]
 
-#%% 抓取上市櫃ETF代號
+#%% 2. 抓取上市櫃ETF代號
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -154,7 +275,7 @@ headers = {
 }
 
 # ---------------------------------------------------------
-# 1. 抓取上市 ETF (TWSE)
+# 第1步：抓取上市 ETF (TWSE)
 # ---------------------------------------------------------
 print("正在取得上市 ETF 清單 (TWSE)...")
 twse_direct_url = "https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL?response=open_data"
@@ -182,7 +303,7 @@ except Exception as e:
     print(f"上市 ETF 擷取異常: {e}")
 
 # ---------------------------------------------------------
-# 2. 抓取上櫃 ETF (TPEx) - 改用穩定 JSON 介面
+# 第2步：抓取上櫃 ETF (TPEx) - 改用穩定 JSON 介面
 # ---------------------------------------------------------
 print("正在取得上櫃 ETF 清單 (TPEx)...")
 # 該端點專門回傳每日收盤行情 JSON，不需預先指定日期即可抓取最新一日
@@ -214,12 +335,12 @@ except Exception as e:
     print(f"上櫃 ETF 擷取異常: {e}")
 
 # ---------------------------------------------------------
-# 3. 合併、排序並匯出為 Excel
+# 第3步：合併、排序
 # ---------------------------------------------------------
-all_data = twse_list + tpex_list
+all_list = twse_list + tpex_list
 
 
-df_result = pd.DataFrame(all_data)
+df_result = pd.DataFrame(all_list)
 df_result = df_result.drop_duplicates(subset=["證券代號"]).sort_values(by="證券代號").reset_index(drop=True)
 
 ticker_list = df_result.set_index('證券代號', inplace = False)
@@ -232,15 +353,16 @@ day_end = (dt.datetime.today() + dt.timedelta(days=1)).strftime("%Y-%m-%d")
 k_th = 50
 
 # 載入名單
-
+# ticker_list = pd.read_excel("台股ETF名單.xlsx", sheet_name="ETF總表", index_col=0)
 stock_list = ticker_list.index.tolist()
 if "0050.TW" not in stock_list:
     stock_list.append("0050.TW")
 
-print(f"開始下載 {len(stock_list)} 檔標的歷史行情與配息資訊...")
+print(f"開始下載 {len(stock_list)} 檔標的歷史行情 (FinMind) 與配息資訊 (Yahoo Chart API)...")
 all_data = {}
 for s in tqdm(stock_list, desc="下載行情"):
-    df_s = fetch_yahoo_chart_data(s, start_date=day_begin, end_date=day_end)
+    # 傳入保留後綴的 ticker (如 '0050.TW', '00679B.TWO')
+    df_s = fetch_etf_data(s, start_date=day_begin, end_date=day_end)
     if df_s is not None and len(df_s) >= 20:
         all_data[s] = df_s
     time.sleep(0.04)
@@ -277,7 +399,9 @@ score_dict = {}  # 存放各標的各交易日的動態評分
 candidates = [s for s in prices_df.columns]
 
 for t in candidates:
+
     t_df = all_data[t][["Close", "Dividend"]].dropna(subset=["Close"])
+    t_df = t_df[t_df['Close'] > 0]
     if len(t_df) < 20:
         continue
 
