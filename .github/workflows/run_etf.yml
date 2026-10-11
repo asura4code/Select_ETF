@@ -41,8 +41,9 @@ jobs:
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          FM_DL_TOKEN: ${{ secrets.FM_DL_TOKEN }}
         run: |
-          python ETF_Model_v7_雲端版.py
+          python ETF_Model_v8_雲端版.py
 
       - name: 將更新後的 Excel 存回 GitHub
         run: |
