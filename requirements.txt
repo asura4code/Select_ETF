@@ -2,6 +2,14 @@ pandas
 numpy
 requests
 tqdm
-yahoofinancials
 openpyxl
 tabulate
+datetime
+io
+os
+sys
+time
+warnings
+FinMind.data
+loguru
+talib
