@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>台股ETF量化監控儀表板</title>
+  <title>台股 ETF 定期定額量化監控看板</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SheetJS CDN (讀取 Excel) -->
@@ -62,7 +62,7 @@
         <div class="truncate">
           <div class="flex items-center gap-1.5 sm:gap-2">
             <h1 class="text-sm sm:text-base font-bold tracking-tight text-white truncate">台股 ETF 量化監控</h1>
-            <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono shrink-0">v8 雲端</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono shrink-0">v8.0</span>
           </div>
           <p class="text-[10px] text-slate-400 truncate hidden sm:block">基準：0050 同期含息定期定額 ｜ 策略：動態加碼回測 + KD 位階評估</p>
         </div>
@@ -179,7 +179,7 @@
         <div class="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
           <div class="relative w-full sm:w-64">
             <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
-            <input type="text" id="searchInput" placeholder="搜尋代號 (如 00947) 或名稱..." 
+            <input type="text" id="searchInput" placeholder="搜尋代號 (如 0050) 或名稱..." 
                    class="w-full bg-slate-950 border border-slate-700/80 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition">
           </div>
 
@@ -202,7 +202,6 @@
       <div id="tableViewContainer" class="hidden">
         <div class="px-4 py-2 bg-slate-950/50 border-b border-slate-800/60 text-[11px] text-slate-400 flex items-center justify-between sm:hidden">
           <span>💡 左右滑動可檢視完整欄位</span>
-          <span>代號欄位已固定</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs whitespace-nowrap">
@@ -211,13 +210,13 @@
                 <th onclick="sortTable('code')" class="py-3 px-3.5 cursor-pointer hover:text-white transition sticky-col border-r border-slate-800/80">代號 / 名稱</th>
                 <th onclick="sortTable('price')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">現價</th>
                 <th onclick="sortTable('K值')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">K值</th>
-                <th onclick="sortTable('年化報酬率')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">回測年化</th>
+				<th onclick="sortTable('平均報酬率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">平均報酬率</th>
+				<th onclick="sortTable('平均成交金額')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">月均金額</th>
+                <th onclick="sortTable('年化報酬率')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">年化報酬率</th>
+				<th onclick="sortTable('進場次數')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">進場次數</th>
                 <th onclick="sortTable('勝率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">勝率</th>
                 <th onclick="sortTable('報酬差')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">勝大盤差</th>
-                <th onclick="sortTable('平均報酬率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">次均報酬</th>
-                <th onclick="sortTable('進場次數')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">交易次數</th>
-                <th onclick="sortTable('平均成交金額')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">20日均額</th>
-                <th onclick="sortTable('首次加入日期')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">首次入選</th>
+                <th onclick="sortTable('首次加入日期')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">入選日</th>
                 <th class="py-3 px-3.5 text-center">狀態</th>
               </tr>
             </thead>
@@ -342,7 +341,7 @@
             </div>
             <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
               <div>
-                <span class="text-[10px] text-slate-500 block">回測年化</span>
+                <span class="text-[10px] text-slate-500 block">年化報酬率</span>
                 <span class="font-bold font-mono text-emerald-400 text-sm">${Math.round(item['年化報酬率'])}%</span>
               </div>
               <div>
@@ -482,7 +481,7 @@
 
             <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/60 text-xs">
               <div>
-                <span class="text-[10px] text-slate-500 block">回測年化</span>
+                <span class="text-[10px] text-slate-500 block">年化報酬率</span>
                 <span class="font-bold font-mono text-emerald-400">${Math.round(item['年化報酬率'])}%</span>
               </div>
               <div>
@@ -496,8 +495,8 @@
             </div>
 
             <div class="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-800/40 font-mono">
-              <span>均額: ${formatMoney(item['平均成交金額'])}</span>
-              <span>次數: ${item['進場次數']}次 ｜ 首選: ${item['首次加入日期']}</span>
+              <span>月均金額: ${formatMoney(item['平均成交金額'])}</span>
+              <span>進場次數: ${item['進場次數']}次 ｜ 入選日: ${item['首次加入日期']}</span>
             </div>
           </div>
         `;
