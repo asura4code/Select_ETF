@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>台股 ETF 定期定額量化監控看板</title>
+  <title>台股 ETF 量化監控儀表板</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SheetJS CDN (讀取 Excel) -->
@@ -179,7 +179,7 @@
         <div class="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
           <div class="relative w-full sm:w-64">
             <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
-            <input type="text" id="searchInput" placeholder="搜尋代號 (如 00947) 或名稱..." 
+            <input type="text" id="searchInput" placeholder="搜尋代號 (如 0050) 或名稱..." 
                    class="w-full bg-slate-950 border border-slate-700/80 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition">
           </div>
 
@@ -211,13 +211,13 @@
                 <th onclick="sortTable('code')" class="py-3 px-3.5 cursor-pointer hover:text-white transition sticky-col border-r border-slate-800/80">代號 / 名稱</th>
                 <th onclick="sortTable('price')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">現價</th>
                 <th onclick="sortTable('K值')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">K值</th>
-                <th onclick="sortTable('平均報酬率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">次均報酬</th>
-                <th onclick="sortTable('平均成交金額')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">20日均額</th>
-                <th onclick="sortTable('年化報酬率')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">回測年化</th>
+                <th onclick="sortTable('平均報酬率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">平均報酬</th>
+                <th onclick="sortTable('平均成交金額')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">月均金額</th>
+                <th onclick="sortTable('年化報酬率')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">年化報酬率</th>
                 <th onclick="sortTable('進場次數')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">交易次數</th>
                 <th onclick="sortTable('勝率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">勝率</th>
                 <th onclick="sortTable('報酬差')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">勝大盤差</th>
-                <th onclick="sortTable('首次加入日期')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">首次入選</th>
+                <th onclick="sortTable('首次加入日期')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">入選日</th>
                 <th class="py-3 px-3.5 text-center">狀態</th>
               </tr>
             </thead>
@@ -338,7 +338,7 @@
             </div>
             <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
               <div>
-                <span class="text-[10px] text-slate-500 block">回測年化</span>
+                <span class="text-[10px] text-slate-500 block">年化報酬率</span>
                 <span class="font-bold font-mono text-emerald-400 text-sm">${Math.round(item['年化報酬率'])}%</span>
               </div>
               <div>
@@ -351,8 +351,8 @@
               </div>
             </div>
             <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-800/40 font-mono">
-              <span>20日均額: ${formatMoney(item['平均成交金額'])}</span>
-              <span>首次入選: ${item['首次加入日期']}</span>
+              <span>月均金額: ${formatMoney(item['平均成交金額'])}</span>
+              <span>入選日: ${item['首次加入日期']}</span>
             </div>
           </div>`).join('');
       }
@@ -379,15 +379,15 @@
             </div>
             <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
               <div>
-                <span class="text-[10px] text-slate-500 block">回測年化</span>
+                <span class="text-[10px] text-slate-500 block">年化報酬率</span>
                 <span class="font-bold font-mono text-amber-400 text-sm">${Math.round(item['年化報酬率'])}%</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-500 block">回測勝率</span>
+                <span class="text-[10px] text-slate-500 block">勝率</span>
                 <span class="font-bold font-mono text-slate-200 text-sm">${item['勝率(%)']}%</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-500 block">20日均額</span>
+                <span class="text-[10px] text-slate-500 block">月均金額</span>
                 <span class="font-mono text-slate-300 text-xs block mt-0.5">${formatMoney(item['平均成交金額'])}</span>
               </div>
             </div>
@@ -476,22 +476,22 @@
 
             <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/60 text-xs">
               <div>
-                <span class="text-[10px] text-slate-500 block">次均報酬</span>
+                <span class="text-[10px] text-slate-500 block">平均報酬</span>
                 <span class="font-bold font-mono text-slate-300">${item['平均報酬率(%)'].toFixed(2)}%</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-500 block">20日均額</span>
+                <span class="text-[10px] text-slate-500 block">月均金額</span>
                 <span class="font-bold font-mono text-slate-300">${formatMoney(item['平均成交金額'])}</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-500 block">回測年化</span>
+                <span class="text-[10px] text-slate-500 block">年化報酬率</span>
                 <span class="font-bold font-mono text-emerald-400">${Math.round(item['年化報酬率'])}%</span>
               </div>
             </div>
 
             <div class="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-800/40 font-mono">
               <span>交易: ${item['進場次數']}次 ｜ 勝率: ${item['勝率(%)'].toFixed(1)}%</span>
-              <span>勝大盤: +${(item['報酬差'] * 100).toFixed(1)}%</span>
+              <span>入選日: ${item['首次加入日期']}</span>
             </div>
           </div>
         `;
@@ -525,11 +525,11 @@
                 ${item['K值'].toFixed(1)}
               </span>
             </td>
-            <!-- 3. 次均報酬 -->
+            <!-- 3. 平均報酬 -->
             <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">${item['平均報酬率(%)'].toFixed(2)}%</td>
-            <!-- 4. 20日均額 -->
+            <!-- 4. 月均金額 -->
             <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${formatMoney(item['平均成交金額'])}</td>
-            <!-- 5. 回測年化 -->
+            <!-- 5. 年化報酬率 -->
             <td class="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-400">${Math.round(item['年化報酬率'])}%</td>
             <!-- 6. 交易次數 -->
             <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${item['進場次數']}</td>
@@ -539,7 +539,7 @@
             </td>
             <!-- 8. 勝大盤差 -->
             <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">+${(item['報酬差'] * 100).toFixed(1)}%</td>
-            <!-- 9. 首次入選 -->
+            <!-- 9. 入選日 -->
             <td class="py-2.5 px-3.5 text-center font-mono text-slate-400 text-[11px]">${item['首次加入日期']}</td>
             <!-- 10. 狀態 -->
             <td class="py-2.5 px-3.5 text-center">${statusTag}</td>
