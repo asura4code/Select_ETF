@@ -2,8 +2,8 @@
 <html lang="zh-TW" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股 ETF 定期定額量化監控看板</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>台股ETF量化監控儀表板</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SheetJS CDN (讀取 Excel) -->
@@ -27,159 +27,205 @@
     }
   </script>
   <style>
-    /* 自訂滾動條樣式 */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    /* 隱藏滾動條但保持滾動能力 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* 桌面版滾動條 */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* 表格第一欄凍結效果 (固定股票代號) */
+    .sticky-col {
+      position: sticky;
+      left: 0;
+      background-color: #0f172a;
+      z-index: 10;
+    }
+    thead .sticky-col {
+      background-color: #080d1a;
+      z-index: 20;
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-cyan-500 selection:text-white">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-cyan-500 selection:text-white pb-10">
 
   <!-- 頂部導航列 -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="p-2 bg-gradient-to-tr from-cyan-600 to-blue-500 rounded-lg shadow-lg shadow-cyan-500/20">
-          <i data-lucide="trending-up" class="w-5 h-5 text-white"></i>
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-2.5 sm:space-x-3 overflow-hidden">
+        <div class="p-1.5 sm:p-2 bg-gradient-to-tr from-cyan-600 to-blue-500 rounded-lg shadow-md shrink-0">
+          <i data-lucide="trending-up" class="w-4 h-4 sm:w-5 sm:h-5 text-white"></i>
         </div>
-        <div>
-          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            台股 ETF 動態回測量化戰情室
-            <span class="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v8 雲端版</span>
-          </h1>
-          <p class="text-xs text-slate-400 hidden sm:block">基準指標：0050 同期含息定期定額 ｜ 策略：動態加碼平攤回測 + KD 位階評估</p>
+        <div class="truncate">
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <h1 class="text-sm sm:text-base font-bold tracking-tight text-white truncate">台股 ETF 量化監控</h1>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono shrink-0">v8 雲端</span>
+          </div>
+          <p class="text-[10px] text-slate-400 truncate hidden sm:block">基準：0050 同期含息定期定額 ｜ 策略：動態加碼回測 + KD 位階評估</p>
         </div>
       </div>
-      <div class="flex items-center space-x-3">
-        <div id="statusIndicator" class="flex items-center space-x-2 text-xs text-slate-400">
+      
+      <div class="flex items-center space-x-2 shrink-0">
+        <div id="statusIndicator" class="flex items-center space-x-1.5 text-[11px] text-slate-400">
           <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="updateTimeText">載入資料中...</span>
+          <span id="updateTimeText" class="hidden sm:inline">同步中...</span>
         </div>
-        <button onclick="loadExcelData()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition" title="重新整理">
-          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        <button onclick="loadExcelData()" class="p-1.5 sm:p-2 bg-slate-800/80 hover:bg-slate-700 active:scale-95 rounded-lg text-slate-300 hover:text-white transition" title="重新整理">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
         </button>
       </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+  <main class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 sm:space-y-7">
     
-    <!-- 頂部 KPI 卡片列 -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-4 shadow-sm">
-        <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
-          <span>監控 ETF 總數</span>
-          <i data-lucide="layers" class="w-4 h-4 text-slate-500"></i>
+    <!-- 頂部 4 大 KPI 統計列 -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-3 sm:p-4 shadow-sm">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs mb-1">
+          <span>監控標的</span>
+          <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-500"></i>
         </div>
-        <div class="text-2xl font-bold font-mono text-white" id="statTotalCount">--</div>
-        <div class="text-xs text-slate-500 mt-1">滿足勝率 & 正報酬條件</div>
+        <div class="text-xl sm:text-2xl font-bold font-mono text-white" id="statTotalCount">--</div>
+        <div class="text-[10px] text-slate-500 mt-0.5 truncate">符合基本篩選標的</div>
       </div>
-      <div class="bg-slate-900 border border-emerald-900/30 rounded-xl p-4 shadow-sm bg-gradient-to-br from-slate-900 to-emerald-950/20">
-        <div class="flex items-center justify-between text-emerald-400 text-xs mb-1">
-          <span>🏆 布局價值標的</span>
-          <i data-lucide="target" class="w-4 h-4 text-emerald-400"></i>
+
+      <div class="bg-slate-900 border border-emerald-900/30 rounded-xl p-3 sm:p-4 shadow-sm bg-gradient-to-br from-slate-900 to-emerald-950/20">
+        <div class="flex items-center justify-between text-emerald-400 text-[11px] sm:text-xs mb-1">
+          <span>🏆 布局價值</span>
+          <i data-lucide="target" class="w-3.5 h-3.5 text-emerald-400"></i>
         </div>
-        <div class="text-2xl font-bold font-mono text-emerald-400" id="statValueCount">--</div>
-        <div class="text-xs text-slate-500 mt-1">K &lt; 50 且 評分=2 且 勝大盤≥10%</div>
+        <div class="text-xl sm:text-2xl font-bold font-mono text-emerald-400" id="statValueCount">--</div>
+        <div class="text-[10px] text-slate-500 mt-0.5 truncate">K &lt; 50 且勝 0050</div>
       </div>
-      <div class="bg-slate-900 border border-amber-900/30 rounded-xl p-4 shadow-sm bg-gradient-to-br from-slate-900 to-amber-950/20">
-        <div class="flex items-center justify-between text-amber-400 text-xs mb-1">
-          <span>🔥 位階升溫警戒</span>
-          <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
+
+      <div class="bg-slate-900 border border-amber-900/30 rounded-xl p-3 sm:p-4 shadow-sm bg-gradient-to-br from-slate-900 to-amber-950/20">
+        <div class="flex items-center justify-between text-amber-400 text-[11px] sm:text-xs mb-1">
+          <span>🔥 位階升溫</span>
+          <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400"></i>
         </div>
-        <div class="text-2xl font-bold font-mono text-amber-400" id="statHeatedCount">--</div>
-        <div class="text-xs text-slate-500 mt-1">K值 ≥ 85 (短線過熱)</div>
+        <div class="text-xl sm:text-2xl font-bold font-mono text-amber-400" id="statHeatedCount">--</div>
+        <div class="text-[10px] text-slate-500 mt-0.5 truncate">K ≥ 85 高檔過熱</div>
       </div>
-      <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-4 shadow-sm">
-        <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+
+      <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-3 sm:p-4 shadow-sm">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs mb-1">
           <span>策略平均勝率</span>
-          <i data-lucide="check-circle-2" class="w-4 h-4 text-blue-400"></i>
+          <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-cyan-400"></i>
         </div>
-        <div class="text-2xl font-bold font-mono text-cyan-400" id="statAvgWinRate">--%</div>
-        <div class="text-xs text-slate-500 mt-1" id="statTopAnnual">最高年化：--</div>
+        <div class="text-xl sm:text-2xl font-bold font-mono text-cyan-400" id="statAvgWinRate">--%</div>
+        <div class="text-[10px] text-slate-500 mt-0.5 truncate" id="statTopAnnual">最高：--</div>
       </div>
     </div>
 
     <!-- 區塊 1：具有布局價值標的 -->
-    <section class="space-y-4">
-      <div class="flex items-center justify-between">
+    <section class="space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div class="flex items-center space-x-2">
-          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-          <h2 class="text-lg font-bold text-white tracking-wide">🏆 具有布局價值標的 (安全區蓄勢)</h2>
-          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" id="valueBadge">0 檔符合</span>
+          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></div>
+          <h2 class="text-base sm:text-lg font-bold text-white tracking-wide">🏆 布局價值標的 (低檔蓄勢)</h2>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium" id="valueBadge">0 檔</span>
         </div>
-        <span class="text-xs text-slate-400">準則：成立來定額勝 0050 + 報酬差 ≥ 10% + K值 &lt; 50</span>
+        <span class="text-[11px] text-slate-400">定期定額勝大盤 + 報酬差 ≥ 10% + K &lt; 50</span>
       </div>
-      <div id="valueCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- 動態渲染卡片 -->
+      <div id="valueCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <!-- 動態卡片渲染 -->
       </div>
     </section>
 
     <!-- 區塊 2：位階升溫標的 -->
-    <section class="space-y-4">
-      <div class="flex items-center justify-between">
+    <section class="space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div class="flex items-center space-x-2">
-          <div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
-          <h2 class="text-lg font-bold text-white tracking-wide">🔥 位階升溫標的 (高檔過熱警示)</h2>
-          <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" id="heatedBadge">0 檔符合</span>
+          <div class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></div>
+          <h2 class="text-base sm:text-lg font-bold text-white tracking-wide">🔥 位階升溫標的 (短線過熱警示)</h2>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium" id="heatedBadge">0 檔</span>
         </div>
-        <span class="text-xs text-slate-400">準則：K值 ≥ 85 (留意獲利了結或暫緩盲目追高)</span>
+        <span class="text-[11px] text-slate-400">K值 ≥ 85，留意短線獲利調節或避免追高</span>
       </div>
-      <div id="heatedCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- 動態渲染卡片 -->
+      <div id="heatedCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <!-- 動態卡片渲染 -->
       </div>
     </section>
 
-    <!-- 區塊 3：完整 ETF 動態總表 -->
+    <!-- 區塊 3：完整 ETF 動態清單 -->
     <section class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-      <div class="p-4 sm:p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-base font-bold text-white flex items-center gap-2">
-            <i data-lucide="table" class="w-4 h-4 text-cyan-400"></i>
-            完整 ETF 篩選名單
-          </h2>
-          <p class="text-xs text-slate-400 mt-0.5">點擊各欄位標題即可自訂升降冪排序</p>
-        </div>
-        <!-- 搜尋與篩選器 -->
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="relative">
-            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
-            <input type="text" id="searchInput" placeholder="搜尋代號或名稱..." 
-                   class="bg-slate-950 border border-slate-700/80 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 w-48 sm:w-56 transition">
+      <!-- 篩選列 -->
+      <div class="p-3.5 sm:p-5 border-b border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="layers" class="w-4 h-4 text-cyan-400"></i>
+            <h2 class="text-sm sm:text-base font-bold text-white">全清單檢索</h2>
+            <span class="text-[11px] text-slate-400" id="filteredCountText">(共 0 檔)</span>
           </div>
-          <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
-            <button onclick="setFilter('all')" id="filterBtn-all" class="filter-btn px-2.5 py-1 rounded bg-slate-800 text-white font-medium transition">全部</button>
-            <button onclick="setFilter('value')" id="filterBtn-value" class="filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">🏆 布局價值</button>
-            <button onclick="setFilter('heated')" id="filterBtn-heated" class="filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">🔥 位階升溫</button>
-            <button onclick="setFilter('score2')" id="filterBtn-score2" class="filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">⭐ 評分2</button>
+
+          <!-- 視圖切換器 (手機優先卡片模式 / 桌面優先表格模式) -->
+          <div class="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[11px]">
+            <button onclick="setViewMode('card')" id="viewBtn-card" class="px-2.5 py-1 rounded transition flex items-center gap-1">
+              <i data-lucide="grid" class="w-3.5 h-3.5"></i>
+              <span>卡片</span>
+            </button>
+            <button onclick="setViewMode('table')" id="viewBtn-table" class="px-2.5 py-1 rounded transition flex items-center gap-1">
+              <i data-lucide="table" class="w-3.5 h-3.5"></i>
+              <span>表格</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 搜尋輸入 + 標籤橫向滑動區塊 -->
+        <div class="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
+          <div class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+            <input type="text" id="searchInput" placeholder="搜尋代號 (如 00947) 或名稱..." 
+                   class="w-full bg-slate-950 border border-slate-700/80 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition">
+          </div>
+
+          <!-- 標籤滑動列：手機上支援橫向不換行滑動 -->
+          <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
+            <button onclick="setFilter('all')" id="filterBtn-all" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 text-white font-medium transition">全部</button>
+            <button onclick="setFilter('value')" id="filterBtn-value" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">🏆 布局價值</button>
+            <button onclick="setFilter('heated')" id="filterBtn-heated" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">🔥 位階升溫</button>
+            <button onclick="setFilter('score2')" id="filterBtn-score2" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">⭐ 勝 0050</button>
           </div>
         </div>
       </div>
 
-      <!-- 表格本體 -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs whitespace-nowrap">
-          <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-mono border-b border-slate-800 select-none">
-            <tr>
-              <th onclick="sortTable('code')" class="py-3 px-4 cursor-pointer hover:text-white transition">代號 / 名稱</th>
-              <th onclick="sortTable('price')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">最新價格</th>
-              <th onclick="sortTable('K值')" class="py-3 px-4 cursor-pointer hover:text-white transition text-center">K值 (位階)</th>
-              <th onclick="sortTable('勝率(%)')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">回測勝率</th>
-              <th onclick="sortTable('平均報酬率(%)')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">次均報酬</th>
-              <th onclick="sortTable('年化報酬率')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">年化報酬率</th>
-              <th onclick="sortTable('報酬差')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">勝 0050 超額</th>
-              <th onclick="sortTable('平均成交金額')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">20日均額</th>
-              <th onclick="sortTable('首次加入日期')" class="py-3 px-4 cursor-pointer hover:text-white transition text-center">首次入選日</th>
-              <th class="py-3 px-4 text-center">狀態標籤</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody" class="divide-y divide-slate-800/60 font-sans">
-            <tr>
-              <td colspan="10" class="py-8 text-center text-slate-500">正在讀取 ETF動態清單.xlsx 資料...</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- 視圖 A：手機友善卡片流 (預設手機模式) -->
+      <div id="listViewContainer" class="p-3.5 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- 動態生成清單卡片 -->
+      </div>
+
+      <!-- 視圖 B：完整表格檢視 -->
+      <div id="tableViewContainer" class="hidden">
+        <div class="px-4 py-2 bg-slate-950/50 border-b border-slate-800/60 text-[11px] text-slate-400 flex items-center justify-between sm:hidden">
+          <span>💡 左右滑動可檢視完整欄位</span>
+          <span>代號欄位已固定</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs whitespace-nowrap">
+            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider font-mono border-b border-slate-800 select-none">
+              <tr>
+                <th onclick="sortTable('code')" class="py-3 px-3.5 cursor-pointer hover:text-white transition sticky-col border-r border-slate-800/80">代號 / 名稱</th>
+                <th onclick="sortTable('price')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">現價</th>
+                <th onclick="sortTable('K值')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">K值</th>
+                <th onclick="sortTable('年化報酬率')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">回測年化</th>
+                <th onclick="sortTable('勝率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">勝率</th>
+                <th onclick="sortTable('報酬差')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">勝大盤差</th>
+                <th onclick="sortTable('平均報酬率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">次均報酬</th>
+                <th onclick="sortTable('進場次數')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">交易次數</th>
+                <th onclick="sortTable('平均成交金額')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">20日均額</th>
+                <th onclick="sortTable('首次加入日期')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">首次入選</th>
+                <th class="py-3 px-3.5 text-center">狀態</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-800/60 font-sans">
+              <!-- 表格動態資料 -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>
@@ -189,8 +235,10 @@
     let currentFilter = 'all';
     let sortColumn = '年化報酬率';
     let sortAsc = false;
+    // 預設模式：螢幕寬度小於 768px 為 card，大於等於則為 table
+    let currentViewMode = window.innerWidth < 768 ? 'card' : 'table';
 
-    // 格式化輔助函式
+    // 格式化數字
     const formatMoney = (val) => {
       if (!val || isNaN(val)) return '-';
       const num = Number(val);
@@ -200,9 +248,9 @@
     };
 
     const getKDClass = (k) => {
-      if (k < 50) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-      if (k >= 85) return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
-      if (k >= 70) return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+      if (k < 50) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
+      if (k >= 85) return 'text-rose-400 bg-rose-500/10 border-rose-500/30';
+      if (k >= 70) return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
       return 'text-slate-300 bg-slate-800 border-slate-700';
     };
 
@@ -211,9 +259,8 @@
       const statusText = document.getElementById('updateTimeText');
       statusText.innerText = '讀取中...';
       try {
-        // 加上 timestamp 避免瀏覽器抓到快取舊檔
         const resp = await fetch('ETF動態清單.xlsx?t=' + new Date().getTime());
-        if (!resp.ok) throw new Error('找不到 ETF動態清單.xlsx，請確認檔案已放置同目錄');
+        if (!resp.ok) throw new Error('讀取不到 ETF動態清單.xlsx');
         
         const arrayBuffer = await resp.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
@@ -221,7 +268,6 @@
         const json = XLSX.utils.sheet_to_json(firstSheet, { defval: null });
 
         rawData = json.map(row => {
-          // 容錯提取第一欄代號
           const code = row['__EMPTY'] || row['Unnamed: 0'] || row['代號'] || row['code'] || Object.values(row)[0] || '';
           return {
             code: String(code).trim(),
@@ -239,30 +285,26 @@
           };
         });
 
-        statusText.innerText = '已同步最新資料 (' + new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) + ')';
+        statusText.innerText = '已更新 ' + new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
         renderAll();
       } catch (err) {
         console.error(err);
-        statusText.innerText = '載入失敗';
-        document.getElementById('tableBody').innerHTML = `
-          <tr>
-            <td colspan="10" class="py-8 text-center text-rose-400 font-medium">
-              ⚠️ 資料讀取失敗：${err.message}<br>
-              <span class="text-xs text-slate-500 mt-1 block">請確認 GitHub Pages 已發布且 ETF動態清單.xlsx 與 index.html 位於相同路徑。</span>
-            </td>
-          </tr>
-        `;
+        statusText.innerText = '載入異常';
+        const errorHtml = `
+          <div class="col-span-full p-6 text-center text-rose-400 font-medium">
+            ⚠️ 無法載入 ETF動態清單.xlsx (${err.message})<br>
+            <span class="text-xs text-slate-500 mt-1 block">請確認 Excel 檔案與 index.html 位於相同目錄</span>
+          </div>`;
+        document.getElementById('listViewContainer').innerHTML = errorHtml;
+        document.getElementById('tableBody').innerHTML = `<tr><td colspan="11" class="py-6 text-center text-rose-400">${errorHtml}</td></tr>`;
       }
     }
 
-    // 渲染 KPI 與分區卡片
-    function renderKPIsAndSections() {
-      // 布局價值：K < 50 且 評分 == 2 且 報酬差 >= 0.1
+    // 渲染統計與亮點卡片
+    function renderKPIsAndCards() {
       const valueList = rawData.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0.1);
-      // 位階升溫：K >= 85
       const heatedList = rawData.filter(d => d['K值'] >= 85);
 
-      // KPI 列
       document.getElementById('statTotalCount').innerText = rawData.length;
       document.getElementById('statValueCount').innerText = valueList.length;
       document.getElementById('statHeatedCount').innerText = heatedList.length;
@@ -275,100 +317,93 @@
         document.getElementById('statTopAnnual').innerText = `最高：${topAnnual.ticker} (${Math.round(topAnnual['年化報酬率'])}%)`;
       }
 
-      document.getElementById('valueBadge').innerText = `${valueList.length} 檔符合`;
-      document.getElementById('heatedBadge').innerText = `${heatedList.length} 檔符合`;
+      document.getElementById('valueBadge').innerText = `${valueList.length} 檔`;
+      document.getElementById('heatedBadge').innerText = `${heatedList.length} 檔`;
 
-      // 渲染布局價值卡片
+      // 布局價值卡片
       const valueContainer = document.getElementById('valueCardsContainer');
       if (valueList.length === 0) {
         valueContainer.innerHTML = `
-          <div class="col-span-full p-6 text-center bg-slate-900/60 border border-slate-800/80 rounded-xl text-slate-500 text-xs">
-            🌿 今日無 K &lt; 50 且勝大盤之低檔標的，處於全面升溫或整理格局，建議多看少做耐心等待。
-          </div>
-        `;
+          <div class="col-span-full p-4 sm:p-6 text-center bg-slate-900/40 border border-slate-800 rounded-xl text-slate-500 text-xs">
+            🌿 今日無 K &lt; 50 且勝 0050 之低檔標的，行情多數處於升溫或整理狀態，保持耐性等待回測機會。
+          </div>`;
       } else {
         valueContainer.innerHTML = valueList.map(item => `
-          <div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-emerald-900/40 hover:border-emerald-500/50 rounded-xl p-4 transition shadow-lg relative overflow-hidden group">
-            <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition"></div>
+          <div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-emerald-900/40 rounded-xl p-3.5 sm:p-4 shadow-lg space-y-3">
             <div class="flex items-start justify-between">
               <div>
-                <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">${item.code}</span>
-                <h3 class="text-base font-bold text-white mt-1">${item.ticker}</h3>
+                <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">${item.code}</span>
+                <h3 class="text-sm sm:text-base font-bold text-white mt-1">${item.ticker}</h3>
               </div>
               <div class="text-right">
-                <div class="text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
-                <div class="text-xs px-2 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">K: ${item['K值']}</div>
+                <div class="text-base sm:text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
+                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">K: ${item['K值']}</div>
               </div>
             </div>
-            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800 text-xs">
+            <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
               <div>
-                <span class="text-slate-500 block">回測年化</span>
+                <span class="text-[10px] text-slate-500 block">回測年化</span>
                 <span class="font-bold font-mono text-emerald-400 text-sm">${Math.round(item['年化報酬率'])}%</span>
               </div>
               <div>
-                <span class="text-slate-500 block">勝率</span>
+                <span class="text-[10px] text-slate-500 block">勝率</span>
                 <span class="font-bold font-mono text-cyan-400 text-sm">${item['勝率(%)']}%</span>
               </div>
               <div>
-                <span class="text-slate-500 block">同期贏大盤</span>
+                <span class="text-[10px] text-slate-500 block">同期贏大盤</span>
                 <span class="font-bold font-mono text-white text-sm">+${(item['報酬差'] * 100).toFixed(1)}%</span>
               </div>
             </div>
-            <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-800/40 font-mono">
-              <span>日均額: ${formatMoney(item['平均成交金額'])}</span>
+            <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-800/40 font-mono">
+              <span>20日均額: ${formatMoney(item['平均成交金額'])}</span>
               <span>首次入選: ${item['首次加入日期']}</span>
             </div>
-          </div>
-        `).join('');
+          </div>`).join('');
       }
 
-      // 渲染位階升溫卡片
+      // 位階升溫卡片
       const heatedContainer = document.getElementById('heatedCardsContainer');
       if (heatedList.length === 0) {
         heatedContainer.innerHTML = `
-          <div class="col-span-full p-6 text-center bg-slate-900/60 border border-slate-800/80 rounded-xl text-slate-500 text-xs">
+          <div class="col-span-full p-4 sm:p-6 text-center bg-slate-900/40 border border-slate-800 rounded-xl text-slate-500 text-xs">
             今日無 K ≥ 85 之過熱標的。
-          </div>
-        `;
+          </div>`;
       } else {
         heatedContainer.innerHTML = heatedList.map(item => `
-          <div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-amber-900/40 hover:border-amber-500/50 rounded-xl p-4 transition shadow-lg relative overflow-hidden group">
-            <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-amber-500/5 rounded-full blur-xl group-hover:bg-amber-500/10 transition"></div>
+          <div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-amber-900/40 rounded-xl p-3.5 sm:p-4 shadow-lg space-y-3">
             <div class="flex items-start justify-between">
               <div>
-                <span class="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">${item.code}</span>
-                <h3 class="text-base font-bold text-white mt-1">${item.ticker}</h3>
+                <span class="text-[11px] font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">${item.code}</span>
+                <h3 class="text-sm sm:text-base font-bold text-white mt-1">${item.ticker}</h3>
               </div>
               <div class="text-right">
-                <div class="text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
-                <div class="text-xs px-2 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">🔥 K: ${item['K值']}</div>
+                <div class="text-base sm:text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
+                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">🔥 K: ${item['K值']}</div>
               </div>
             </div>
-            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800 text-xs">
+            <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
               <div>
-                <span class="text-slate-500 block">回測年化</span>
+                <span class="text-[10px] text-slate-500 block">回測年化</span>
                 <span class="font-bold font-mono text-amber-400 text-sm">${Math.round(item['年化報酬率'])}%</span>
               </div>
               <div>
-                <span class="text-slate-500 block">回測勝率</span>
+                <span class="text-[10px] text-slate-500 block">回測勝率</span>
                 <span class="font-bold font-mono text-slate-200 text-sm">${item['勝率(%)']}%</span>
               </div>
               <div>
-                <span class="text-slate-500 block">均額</span>
-                <span class="font-mono text-slate-300 text-xs mt-1 block">${formatMoney(item['平均成交金額'])}</span>
+                <span class="text-[10px] text-slate-500 block">20日均額</span>
+                <span class="font-mono text-slate-300 text-xs block mt-0.5">${formatMoney(item['平均成交金額'])}</span>
               </div>
             </div>
-          </div>
-        `).join('');
+          </div>`).join('');
       }
     }
 
-    // 表格過濾與排序
-    function renderTable() {
+    // 取得當前經過搜尋與篩選的資料陣列
+    function getFilteredList() {
       const search = document.getElementById('searchInput').value.trim().toLowerCase();
       let list = [...rawData];
 
-      // 搜尋篩選
       if (search) {
         list = list.filter(item => 
           item.code.toLowerCase().includes(search) || 
@@ -376,7 +411,6 @@
         );
       }
 
-      // 標籤篩選
       if (currentFilter === 'value') {
         list = list.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0.1);
       } else if (currentFilter === 'heated') {
@@ -385,7 +419,6 @@
         list = list.filter(d => d['評分'] === 2);
       }
 
-      // 排序
       list.sort((a, b) => {
         let valA = a[sortColumn];
         let valB = b[sortColumn];
@@ -395,12 +428,82 @@
         return sortAsc ? valA - valB : valB - valA;
       });
 
+      return list;
+    }
+
+    // 渲染總表（支援卡片與表格雙模式）
+    function renderListAndTable() {
+      const list = getFilteredList();
+      document.getElementById('filteredCountText').innerText = `(共 ${list.length} 檔)`;
+
+      const cardContainer = document.getElementById('listViewContainer');
       const tbody = document.getElementById('tableBody');
+
       if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-500">無符合篩選條件之標的</td></tr>`;
+        const emptyHtml = `<div class="col-span-full py-8 text-center text-slate-500 text-xs">無符合條件之標的</div>`;
+        cardContainer.innerHTML = emptyHtml;
+        tbody.innerHTML = `<tr><td colspan="11" class="py-8 text-center text-slate-500">無符合條件之標的</td></tr>`;
         return;
       }
 
+      // 1. 渲染手機卡片模式 (Zero Horizontal Scroll)
+      cardContainer.innerHTML = list.map(item => {
+        const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0.1;
+        const isHeated = item['K值'] >= 85;
+
+        let badge = '';
+        if (isValue) {
+          badge = '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">🏆 布局價值</span>';
+        } else if (isHeated) {
+          badge = '<span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">🔥 位階升溫</span>';
+        } else if (item['評分'] === 2) {
+          badge = '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">勝 0050</span>';
+        }
+
+        return `
+          <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2.5 hover:border-slate-700 transition">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-mono font-bold text-slate-300">${item.ticker}</span>
+                <span class="text-[11px] font-mono text-slate-500 ml-1.5">${item.code}</span>
+              </div>
+              <div>${badge}</div>
+            </div>
+
+            <div class="flex items-baseline justify-between pt-1">
+              <div>
+                <span class="text-xs text-slate-500">現價 </span>
+                <span class="text-base font-bold font-mono text-white">$${item.price.toFixed(2)}</span>
+              </div>
+              <div class="text-xs font-mono px-2 py-0.5 rounded border ${getKDClass(item['K值'])}">
+                K: ${item['K值'].toFixed(1)}
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/60 text-xs">
+              <div>
+                <span class="text-[10px] text-slate-500 block">回測年化</span>
+                <span class="font-bold font-mono text-emerald-400">${Math.round(item['年化報酬率'])}%</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-500 block">勝率</span>
+                <span class="font-bold font-mono text-cyan-400">${item['勝率(%)'].toFixed(1)}%</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-500 block">贏大盤差</span>
+                <span class="font-bold font-mono text-slate-300">+${(item['報酬差'] * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-800/40 font-mono">
+              <span>均額: ${formatMoney(item['平均成交金額'])}</span>
+              <span>次數: ${item['進場次數']}次 ｜ 首選: ${item['首次加入日期']}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 2. 渲染完整表格模式
       tbody.innerHTML = list.map(item => {
         const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0.1;
         const isHeated = item['K值'] >= 85;
@@ -416,34 +519,53 @@
 
         return `
           <tr class="hover:bg-slate-850/60 transition group">
-            <td class="py-3 px-4">
-              <div class="font-bold text-white">${item.ticker}</div>
-              <div class="text-[11px] text-slate-400 font-mono">${item.code}</div>
+            <td class="py-2.5 px-3.5 sticky-col border-r border-slate-800/80">
+              <div class="font-bold text-white text-xs">${item.ticker}</div>
+              <div class="text-[10px] text-slate-400 font-mono">${item.code}</div>
             </td>
-            <td class="py-3 px-4 text-right font-mono font-bold text-slate-100">$${item.price.toFixed(2)}</td>
-            <td class="py-3 px-4 text-center">
-              <span class="inline-block px-2 py-0.5 rounded border text-xs font-mono font-semibold ${getKDClass(item['K值'])}">
+            <td class="py-2.5 px-3.5 text-right font-mono font-bold text-slate-100">$${item.price.toFixed(2)}</td>
+            <td class="py-2.5 px-3.5 text-center">
+              <span class="inline-block px-1.5 py-0.5 rounded border text-[11px] font-mono font-semibold ${getKDClass(item['K值'])}">
                 ${item['K值'].toFixed(1)}
               </span>
             </td>
-            <td class="py-3 px-4 text-right font-mono font-semibold ${item['勝率(%)'] >= 90 ? 'text-cyan-400' : 'text-slate-300'}">
+            <td class="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-400">${Math.round(item['年化報酬率'])}%</td>
+            <td class="py-2.5 px-3.5 text-right font-mono font-semibold ${item['勝率(%)'] >= 90 ? 'text-cyan-400' : 'text-slate-300'}">
               ${item['勝率(%)'].toFixed(1)}%
             </td>
-            <td class="py-3 px-4 text-right font-mono text-slate-300">${item['平均報酬率(%)'].toFixed(2)}%</td>
-            <td class="py-3 px-4 text-right font-mono font-bold text-emerald-400 text-sm">
-              ${Math.round(item['年化報酬率'])}%
-            </td>
-            <td class="py-3 px-4 text-right font-mono text-slate-300">
-              +${(item['報酬差'] * 100).toFixed(1)}%
-            </td>
-            <td class="py-3 px-4 text-right font-mono text-slate-400">${formatMoney(item['平均成交金額'])}</td>
-            <td class="py-3 px-4 text-center font-mono text-slate-400 text-[11px]">${item['首次加入日期']}</td>
-            <td class="py-3 px-4 text-center">${statusTag}</td>
+            <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">+${(item['報酬差'] * 100).toFixed(1)}%</td>
+            <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">${item['平均報酬率(%)'].toFixed(2)}%</td>
+            <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${item['進場次數']}</td>
+            <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${formatMoney(item['平均成交金額'])}</td>
+            <td class="py-2.5 px-3.5 text-center font-mono text-slate-400 text-[11px]">${item['首次加入日期']}</td>
+            <td class="py-2.5 px-3.5 text-center">${statusTag}</td>
           </tr>
         `;
       }).join('');
     }
 
+    // 視圖切換函數
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      const cardView = document.getElementById('listViewContainer');
+      const tableView = document.getElementById('tableViewContainer');
+      const btnCard = document.getElementById('viewBtn-card');
+      const btnTable = document.getElementById('viewBtn-table');
+
+      if (mode === 'card') {
+        cardView.classList.remove('hidden');
+        tableView.classList.add('hidden');
+        btnCard.className = 'px-2.5 py-1 rounded bg-slate-800 text-white font-medium transition flex items-center gap-1';
+        btnTable.className = 'px-2.5 py-1 rounded text-slate-400 hover:text-white transition flex items-center gap-1';
+      } else {
+        cardView.classList.add('hidden');
+        tableView.classList.remove('hidden');
+        btnTable.className = 'px-2.5 py-1 rounded bg-slate-800 text-white font-medium transition flex items-center gap-1';
+        btnCard.className = 'px-2.5 py-1 rounded text-slate-400 hover:text-white transition flex items-center gap-1';
+      }
+    }
+
+    // 排序
     function sortTable(col) {
       if (sortColumn === col) {
         sortAsc = !sortAsc;
@@ -451,34 +573,45 @@
         sortColumn = col;
         sortAsc = false;
       }
-      renderTable();
+      renderListAndTable();
     }
 
+    // 標籤篩選
     function setFilter(type) {
       currentFilter = type;
       document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('bg-slate-800', 'text-white', 'font-medium');
-        btn.classList.add('text-slate-400');
+        btn.classList.add('bg-slate-950', 'border', 'border-slate-800', 'text-slate-400');
       });
       const activeBtn = document.getElementById('filterBtn-' + type);
       if (activeBtn) {
+        activeBtn.classList.remove('bg-slate-950', 'border', 'border-slate-800', 'text-slate-400');
         activeBtn.classList.add('bg-slate-800', 'text-white', 'font-medium');
-        activeBtn.classList.remove('text-slate-400');
       }
-      renderTable();
+      renderListAndTable();
     }
 
     function renderAll() {
-      renderKPIsAndSections();
-      renderTable();
+      renderKPIsAndCards();
+      renderListAndTable();
+      setViewMode(currentViewMode);
       lucide.createIcons();
     }
 
+    // 監聽搜尋
     document.getElementById('searchInput').addEventListener('input', () => {
-      renderTable();
+      renderListAndTable();
     });
 
-    // 啟動載入
+    // 視窗尺寸改變時平滑適配
+    window.addEventListener('resize', () => {
+      // 僅在桌面自動展開，手機維持使用者選擇
+      if (window.innerWidth >= 1024 && currentViewMode === 'card') {
+        setViewMode('table');
+      }
+    });
+
+    // 頁面載入執行
     window.addEventListener('DOMContentLoaded', () => {
       loadExcelData();
     });
