@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台股 ETF 定期定額量化監控看板</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS CDN (讀取 Excel) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              850: '#151f32',
+              900: '#0f172a',
+              950: '#080d1a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 自訂滾動條樣式 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-cyan-500 selection:text-white">
+
+  <!-- 頂部導航列 -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-gradient-to-tr from-cyan-600 to-blue-500 rounded-lg shadow-lg shadow-cyan-500/20">
+          <i data-lucide="trending-up" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            台股 ETF 動態回測量化戰情室
+            <span class="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v8 雲端版</span>
+          </h1>
+          <p class="text-xs text-slate-400 hidden sm:block">基準指標：0050 同期含息定期定額 ｜ 策略：動態加碼平攤回測 + KD 位階評估</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div id="statusIndicator" class="flex items-center space-x-2 text-xs text-slate-400">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="updateTimeText">載入資料中...</span>
+        </div>
+        <button onclick="loadExcelData()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition" title="重新整理">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- 頂部 KPI 卡片列 -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+          <span>監控 ETF 總數</span>
+          <i data-lucide="layers" class="w-4 h-4 text-slate-500"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-white" id="statTotalCount">--</div>
+        <div class="text-xs text-slate-500 mt-1">滿足勝率 & 正報酬條件</div>
+      </div>
+      <div class="bg-slate-900 border border-emerald-900/30 rounded-xl p-4 shadow-sm bg-gradient-to-br from-slate-900 to-emerald-950/20">
+        <div class="flex items-center justify-between text-emerald-400 text-xs mb-1">
+          <span>🏆 布局價值標的</span>
+          <i data-lucide="target" class="w-4 h-4 text-emerald-400"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-emerald-400" id="statValueCount">--</div>
+        <div class="text-xs text-slate-500 mt-1">K &lt; 50 且 評分=2 且 勝大盤≥10%</div>
+      </div>
+      <div class="bg-slate-900 border border-amber-900/30 rounded-xl p-4 shadow-sm bg-gradient-to-br from-slate-900 to-amber-950/20">
+        <div class="flex items-center justify-between text-amber-400 text-xs mb-1">
+          <span>🔥 位階升溫警戒</span>
+          <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-amber-400" id="statHeatedCount">--</div>
+        <div class="text-xs text-slate-500 mt-1">K值 ≥ 85 (短線過熱)</div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+          <span>策略平均勝率</span>
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-blue-400"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-cyan-400" id="statAvgWinRate">--%</div>
+        <div class="text-xs text-slate-500 mt-1" id="statTopAnnual">最高年化：--</div>
+      </div>
+    </div>
+
+    <!-- 區塊 1：具有布局價值標的 -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+          <h2 class="text-lg font-bold text-white tracking-wide">🏆 具有布局價值標的 (安全區蓄勢)</h2>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" id="valueBadge">0 檔符合</span>
+        </div>
+        <span class="text-xs text-slate-400">準則：成立來定額勝 0050 + 報酬差 ≥ 10% + K值 &lt; 50</span>
+      </div>
+      <div id="valueCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- 動態渲染卡片 -->
+      </div>
+    </section>
+
+    <!-- 區塊 2：位階升溫標的 -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+          <h2 class="text-lg font-bold text-white tracking-wide">🔥 位階升溫標的 (高檔過熱警示)</h2>
+          <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" id="heatedBadge">0 檔符合</span>
+        </div>
+        <span class="text-xs text-slate-400">準則：K值 ≥ 85 (留意獲利了結或暫緩盲目追高)</span>
+      </div>
+      <div id="heatedCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- 動態渲染卡片 -->
+      </div>
+    </section>
+
+    <!-- 區塊 3：完整 ETF 動態總表 -->
+    <section class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div class="p-4 sm:p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="table" class="w-4 h-4 text-cyan-400"></i>
+            完整 ETF 篩選名單
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">點擊各欄位標題即可自訂升降冪排序</p>
+        </div>
+        <!-- 搜尋與篩選器 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+            <input type="text" id="searchInput" placeholder="搜尋代號或名稱..." 
+                   class="bg-slate-950 border border-slate-700/80 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 w-48 sm:w-56 transition">
+          </div>
+          <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+            <button onclick="setFilter('all')" id="filterBtn-all" class="filter-btn px-2.5 py-1 rounded bg-slate-800 text-white font-medium transition">全部</button>
+            <button onclick="setFilter('value')" id="filterBtn-value" class="filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">🏆 布局價值</button>
+            <button onclick="setFilter('heated')" id="filterBtn-heated" class="filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">🔥 位階升溫</button>
+            <button onclick="setFilter('score2')" id="filterBtn-score2" class="filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">⭐ 評分2</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 表格本體 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs whitespace-nowrap">
+          <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-mono border-b border-slate-800 select-none">
+            <tr>
+              <th onclick="sortTable('code')" class="py-3 px-4 cursor-pointer hover:text-white transition">代號 / 名稱</th>
+              <th onclick="sortTable('price')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">最新價格</th>
+              <th onclick="sortTable('K值')" class="py-3 px-4 cursor-pointer hover:text-white transition text-center">K值 (位階)</th>
+              <th onclick="sortTable('勝率(%)')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">回測勝率</th>
+              <th onclick="sortTable('平均報酬率(%)')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">次均報酬</th>
+              <th onclick="sortTable('年化報酬率')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">年化報酬率</th>
+              <th onclick="sortTable('報酬差')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">勝 0050 超額</th>
+              <th onclick="sortTable('平均成交金額')" class="py-3 px-4 cursor-pointer hover:text-white transition text-right">20日均額</th>
+              <th onclick="sortTable('首次加入日期')" class="py-3 px-4 cursor-pointer hover:text-white transition text-center">首次入選日</th>
+              <th class="py-3 px-4 text-center">狀態標籤</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-800/60 font-sans">
+            <tr>
+              <td colspan="10" class="py-8 text-center text-slate-500">正在讀取 ETF動態清單.xlsx 資料...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let rawData = [];
+    let currentFilter = 'all';
+    let sortColumn = '年化報酬率';
+    let sortAsc = false;
+
+    // 格式化輔助函式
+    const formatMoney = (val) => {
+      if (!val || isNaN(val)) return '-';
+      const num = Number(val);
+      if (num >= 1e8) return (num / 1e8).toFixed(2) + ' 億';
+      if (num >= 1e4) return (num / 1e4).toFixed(0) + ' 萬';
+      return num.toLocaleString();
+    };
+
+    const getKDClass = (k) => {
+      if (k < 50) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+      if (k >= 85) return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+      if (k >= 70) return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+      return 'text-slate-300 bg-slate-800 border-slate-700';
+    };
+
+    // 載入 Excel 檔案
+    async function loadExcelData() {
+      const statusText = document.getElementById('updateTimeText');
+      statusText.innerText = '讀取中...';
+      try {
+        // 加上 timestamp 避免瀏覽器抓到快取舊檔
+        const resp = await fetch('ETF動態清單.xlsx?t=' + new Date().getTime());
+        if (!resp.ok) throw new Error('找不到 ETF動態清單.xlsx，請確認檔案已放置同目錄');
+        
+        const arrayBuffer = await resp.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(firstSheet, { defval: null });
+
+        rawData = json.map(row => {
+          // 容錯提取第一欄代號
+          const code = row['__EMPTY'] || row['Unnamed: 0'] || row['代號'] || row['code'] || Object.values(row)[0] || '';
+          return {
+            code: String(code).trim(),
+            ticker: String(row['ticker'] || '').trim(),
+            price: Number(row['price']) || 0,
+            'K值': Number(row['K值']) || 0,
+            '進場次數': Number(row['進場次數']) || 0,
+            '勝率(%)': Number(row['勝率(%)']) || 0,
+            '平均報酬率(%)': Number(row['平均報酬率(%)']) || 0,
+            '年化報酬率': Number(row['年化報酬率']) || 0,
+            '報酬差': Number(row['報酬差']) || 0,
+            '評分': Number(row['評分']) || 0,
+            '平均成交金額': Number(row['平均成交金額']) || 0,
+            '首次加入日期': row['首次加入日期'] ? String(row['首次加入日期']).slice(0, 10) : '-',
+          };
+        });
+
+        statusText.innerText = '已同步最新資料 (' + new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) + ')';
+        renderAll();
+      } catch (err) {
+        console.error(err);
+        statusText.innerText = '載入失敗';
+        document.getElementById('tableBody').innerHTML = `
+          <tr>
+            <td colspan="10" class="py-8 text-center text-rose-400 font-medium">
+              ⚠️ 資料讀取失敗：${err.message}<br>
+              <span class="text-xs text-slate-500 mt-1 block">請確認 GitHub Pages 已發布且 ETF動態清單.xlsx 與 index.html 位於相同路徑。</span>
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // 渲染 KPI 與分區卡片
+    function renderKPIsAndSections() {
+      // 布局價值：K < 50 且 評分 == 2 且 報酬差 >= 0.1
+      const valueList = rawData.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0.1);
+      // 位階升溫：K >= 85
+      const heatedList = rawData.filter(d => d['K值'] >= 85);
+
+      // KPI 列
+      document.getElementById('statTotalCount').innerText = rawData.length;
+      document.getElementById('statValueCount').innerText = valueList.length;
+      document.getElementById('statHeatedCount').innerText = heatedList.length;
+
+      const avgWinRate = rawData.length ? (rawData.reduce((acc, cur) => acc + cur['勝率(%)'], 0) / rawData.length).toFixed(1) : 0;
+      document.getElementById('statAvgWinRate').innerText = avgWinRate + '%';
+
+      const topAnnual = [...rawData].sort((a, b) => b['年化報酬率'] - a['年化報酬率'])[0];
+      if (topAnnual) {
+        document.getElementById('statTopAnnual').innerText = `最高：${topAnnual.ticker} (${Math.round(topAnnual['年化報酬率'])}%)`;
+      }
+
+      document.getElementById('valueBadge').innerText = `${valueList.length} 檔符合`;
+      document.getElementById('heatedBadge').innerText = `${heatedList.length} 檔符合`;
+
+      // 渲染布局價值卡片
+      const valueContainer = document.getElementById('valueCardsContainer');
+      if (valueList.length === 0) {
+        valueContainer.innerHTML = `
+          <div class="col-span-full p-6 text-center bg-slate-900/60 border border-slate-800/80 rounded-xl text-slate-500 text-xs">
+            🌿 今日無 K &lt; 50 且勝大盤之低檔標的，處於全面升溫或整理格局，建議多看少做耐心等待。
+          </div>
+        `;
+      } else {
+        valueContainer.innerHTML = valueList.map(item => `
+          <div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-emerald-900/40 hover:border-emerald-500/50 rounded-xl p-4 transition shadow-lg relative overflow-hidden group">
+            <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition"></div>
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">${item.code}</span>
+                <h3 class="text-base font-bold text-white mt-1">${item.ticker}</h3>
+              </div>
+              <div class="text-right">
+                <div class="text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
+                <div class="text-xs px-2 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">K: ${item['K值']}</div>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800 text-xs">
+              <div>
+                <span class="text-slate-500 block">回測年化</span>
+                <span class="font-bold font-mono text-emerald-400 text-sm">${Math.round(item['年化報酬率'])}%</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">勝率</span>
+                <span class="font-bold font-mono text-cyan-400 text-sm">${item['勝率(%)']}%</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">同期贏大盤</span>
+                <span class="font-bold font-mono text-white text-sm">+${(item['報酬差'] * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+            <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-800/40 font-mono">
+              <span>日均額: ${formatMoney(item['平均成交金額'])}</span>
+              <span>首次入選: ${item['首次加入日期']}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // 渲染位階升溫卡片
+      const heatedContainer = document.getElementById('heatedCardsContainer');
+      if (heatedList.length === 0) {
+        heatedContainer.innerHTML = `
+          <div class="col-span-full p-6 text-center bg-slate-900/60 border border-slate-800/80 rounded-xl text-slate-500 text-xs">
+            今日無 K ≥ 85 之過熱標的。
+          </div>
+        `;
+      } else {
+        heatedContainer.innerHTML = heatedList.map(item => `
+          <div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-amber-900/40 hover:border-amber-500/50 rounded-xl p-4 transition shadow-lg relative overflow-hidden group">
+            <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-amber-500/5 rounded-full blur-xl group-hover:bg-amber-500/10 transition"></div>
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">${item.code}</span>
+                <h3 class="text-base font-bold text-white mt-1">${item.ticker}</h3>
+              </div>
+              <div class="text-right">
+                <div class="text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
+                <div class="text-xs px-2 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">🔥 K: ${item['K值']}</div>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800 text-xs">
+              <div>
+                <span class="text-slate-500 block">回測年化</span>
+                <span class="font-bold font-mono text-amber-400 text-sm">${Math.round(item['年化報酬率'])}%</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">回測勝率</span>
+                <span class="font-bold font-mono text-slate-200 text-sm">${item['勝率(%)']}%</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">均額</span>
+                <span class="font-mono text-slate-300 text-xs mt-1 block">${formatMoney(item['平均成交金額'])}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // 表格過濾與排序
+    function renderTable() {
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      let list = [...rawData];
+
+      // 搜尋篩選
+      if (search) {
+        list = list.filter(item => 
+          item.code.toLowerCase().includes(search) || 
+          item.ticker.toLowerCase().includes(search)
+        );
+      }
+
+      // 標籤篩選
+      if (currentFilter === 'value') {
+        list = list.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0.1);
+      } else if (currentFilter === 'heated') {
+        list = list.filter(d => d['K值'] >= 85);
+      } else if (currentFilter === 'score2') {
+        list = list.filter(d => d['評分'] === 2);
+      }
+
+      // 排序
+      list.sort((a, b) => {
+        let valA = a[sortColumn];
+        let valB = b[sortColumn];
+        if (typeof valA === 'string') {
+          return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return sortAsc ? valA - valB : valB - valA;
+      });
+
+      const tbody = document.getElementById('tableBody');
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-500">無符合篩選條件之標的</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(item => {
+        const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0.1;
+        const isHeated = item['K值'] >= 85;
+
+        let statusTag = '<span class="text-slate-500 text-[11px]">-</span>';
+        if (isValue) {
+          statusTag = '<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px]">🏆 布局價值</span>';
+        } else if (isHeated) {
+          statusTag = '<span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[11px]">🔥 位階升溫</span>';
+        } else if (item['評分'] === 2) {
+          statusTag = '<span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[11px]">勝 0050</span>';
+        }
+
+        return `
+          <tr class="hover:bg-slate-850/60 transition group">
+            <td class="py-3 px-4">
+              <div class="font-bold text-white">${item.ticker}</div>
+              <div class="text-[11px] text-slate-400 font-mono">${item.code}</div>
+            </td>
+            <td class="py-3 px-4 text-right font-mono font-bold text-slate-100">$${item.price.toFixed(2)}</td>
+            <td class="py-3 px-4 text-center">
+              <span class="inline-block px-2 py-0.5 rounded border text-xs font-mono font-semibold ${getKDClass(item['K值'])}">
+                ${item['K值'].toFixed(1)}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-right font-mono font-semibold ${item['勝率(%)'] >= 90 ? 'text-cyan-400' : 'text-slate-300'}">
+              ${item['勝率(%)'].toFixed(1)}%
+            </td>
+            <td class="py-3 px-4 text-right font-mono text-slate-300">${item['平均報酬率(%)'].toFixed(2)}%</td>
+            <td class="py-3 px-4 text-right font-mono font-bold text-emerald-400 text-sm">
+              ${Math.round(item['年化報酬率'])}%
+            </td>
+            <td class="py-3 px-4 text-right font-mono text-slate-300">
+              +${(item['報酬差'] * 100).toFixed(1)}%
+            </td>
+            <td class="py-3 px-4 text-right font-mono text-slate-400">${formatMoney(item['平均成交金額'])}</td>
+            <td class="py-3 px-4 text-center font-mono text-slate-400 text-[11px]">${item['首次加入日期']}</td>
+            <td class="py-3 px-4 text-center">${statusTag}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function sortTable(col) {
+      if (sortColumn === col) {
+        sortAsc = !sortAsc;
+      } else {
+        sortColumn = col;
+        sortAsc = false;
+      }
+      renderTable();
+    }
+
+    function setFilter(type) {
+      currentFilter = type;
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('bg-slate-800', 'text-white', 'font-medium');
+        btn.classList.add('text-slate-400');
+      });
+      const activeBtn = document.getElementById('filterBtn-' + type);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-slate-800', 'text-white', 'font-medium');
+        activeBtn.classList.remove('text-slate-400');
+      }
+      renderTable();
+    }
+
+    function renderAll() {
+      renderKPIsAndSections();
+      renderTable();
+      lucide.createIcons();
+    }
+
+    document.getElementById('searchInput').addEventListener('input', () => {
+      renderTable();
+    });
+
+    // 啟動載入
+    window.addEventListener('DOMContentLoaded', () => {
+      loadExcelData();
+    });
+  </script>
+</body>
+</html>
