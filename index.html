@@ -192,10 +192,11 @@
               <i data-lucide="arrow-down-up" class="w-3.5 h-3.5 text-cyan-400 mr-1.5 shrink-0"></i>
               <span class="text-slate-500 mr-1 hidden sm:inline">排序:</span>
               <select id="sortSelect" onchange="handleSortSelect(this.value)" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer pr-1">
-                <option value="平均報酬率(%)" class="bg-slate-900">平均報酬</option>
-				<option value="年化報酬率" class="bg-slate-900">年化報酬率</option>
+                <option value="平均報酬率(%)" class="bg-slate-900" selected>平均報酬率</option>
+                <option value="年化報酬率" class="bg-slate-900">年化報酬率</option>
                 <option value="price" class="bg-slate-900">現價</option>
                 <option value="K值" class="bg-slate-900">K值</option>
+											   
                 <option value="平均成交金額" class="bg-slate-900">月均金額</option>
                 <option value="進場次數" class="bg-slate-900">交易次數</option>
                 <option value="勝率(%)" class="bg-slate-900">勝率</option>
@@ -302,7 +303,7 @@
                   K值 <span id="sortIndicator-K值" class="text-cyan-400"></span>
                 </th>
                 <th onclick="sortTable('平均報酬率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
-                  平均報酬 <span id="sortIndicator-平均報酬率(%)" class="text-cyan-400"></span>
+                  平均報酬率 <span id="sortIndicator-平均報酬率(%)" class="text-cyan-400"></span>
                 </th>
                 <th onclick="sortTable('平均成交金額')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
                   月均金額 <span id="sortIndicator-平均成交金額" class="text-cyan-400"></span>
@@ -337,7 +338,7 @@
   <script>
     let rawData = [];
     let currentFilter = 'all';
-    let sortColumn = '年化報酬率';
+    let sortColumn = '平均報酬率(%)';
     let sortAsc = false;
     let currentViewMode = window.innerWidth < 768 ? 'card' : 'table';
 
@@ -440,18 +441,22 @@
                 <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">K值: ${item['K值']}</div>
               </div>
             </div>
-            <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
+            <div class="grid grid-cols-4 gap-1.5 sm:gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
               <div>
-                <span class="text-[10px] text-slate-500 block">年化報酬率</span>
-                <span class="font-bold font-mono text-emerald-400 text-sm">${Math.round(item['年化報酬率'])}%</span>
+                <span class="text-[10px] text-slate-500 block truncate">平均報酬率</span>
+                <span class="font-bold font-mono text-slate-300 text-xs sm:text-sm">${item['平均報酬率(%)'].toFixed(2)}%</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-500 block">勝率</span>
-                <span class="font-bold font-mono text-cyan-400 text-sm">${item['勝率(%)']}%</span>
+                <span class="text-[10px] text-slate-500 block truncate">年化報酬率</span>
+                <span class="font-bold font-mono text-emerald-400 text-xs sm:text-sm">${Math.round(item['年化報酬率'])}%</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-500 block">同期贏大盤</span>
-                <span class="font-bold font-mono text-white text-sm">+${(item['報酬差'] * 100).toFixed(1)}%</span>
+                <span class="text-[10px] text-slate-500 block truncate">勝率</span>
+                <span class="font-bold font-mono text-cyan-400 text-xs sm:text-sm">${item['勝率(%)']}%</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-500 block truncate">同期贏大盤</span>
+                <span class="font-bold font-mono text-white text-xs sm:text-sm">+${(item['報酬差'] * 100).toFixed(1)}%</span>
               </div>
             </div>
             <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-800/40 font-mono">
@@ -629,7 +634,7 @@
 
             <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/60 text-xs">
               <div>
-                <span class="text-[10px] text-slate-500 block">平均報酬</span>
+                <span class="text-[10px] text-slate-500 block">平均報酬率</span>
                 <span class="font-bold font-mono text-slate-300">${item['平均報酬率(%)'].toFixed(2)}%</span>
               </div>
               <div>
@@ -678,7 +683,7 @@
                 ${item['K值'].toFixed(1)}
               </span>
             </td>
-            <!-- 3. 平均報酬 -->
+            <!-- 3. 平均報酬率 -->
             <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">${item['平均報酬率(%)'].toFixed(2)}%</td>
             <!-- 4. 月均金額 -->
             <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${formatMoney(item['平均成交金額'])}</td>
