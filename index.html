@@ -153,7 +153,7 @@
 
     <!-- 區塊 3：完整 ETF 動態清單 -->
     <section class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-      <!-- 篩選列 -->
+      <!-- 篩選與控制面板 -->
       <div class="p-3.5 sm:p-5 border-b border-slate-800 space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -175,20 +175,104 @@
           </div>
         </div>
 
-        <!-- 搜尋輸入 + 標籤橫向滑動區塊 -->
-        <div class="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
-          <div class="relative w-full sm:w-64">
+        <!-- 搜尋列與排序控制列 (手機與桌面皆適用) -->
+        <div class="flex flex-col md:flex-row gap-2.5 md:items-center md:justify-between">
+          <!-- 搜尋框 -->
+          <div class="relative w-full md:w-64">
             <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
             <input type="text" id="searchInput" placeholder="搜尋代號 (如 0050) 或名稱..." 
                    class="w-full bg-slate-950 border border-slate-700/80 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition">
           </div>
 
-          <!-- 標籤滑動列 -->
-          <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
-            <button onclick="setFilter('all')" id="filterBtn-all" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 text-white font-medium transition">全部</button>
-            <button onclick="setFilter('value')" id="filterBtn-value" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">🏆 布局價值</button>
-            <button onclick="setFilter('heated')" id="filterBtn-heated" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">🔥 位階升溫</button>
-            <button onclick="setFilter('score2')" id="filterBtn-score2" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">⭐ 勝 0050</button>
+          <!-- 排序選單與進階篩選切換開關 -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- 卡片與表格通用排序控制器 -->
+            <div class="flex items-center bg-slate-950 px-2 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-300">
+              <i data-lucide="arrow-down-up" class="w-3.5 h-3.5 text-cyan-400 mr-1.5 shrink-0"></i>
+              <span class="text-slate-500 mr-1 hidden sm:inline">排序:</span>
+              <select id="sortSelect" onchange="handleSortSelect(this.value)" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer pr-1">
+                <option value="年化報酬率" class="bg-slate-900">年化報酬率</option>
+                <option value="price" class="bg-slate-900">現價</option>
+                <option value="K值" class="bg-slate-900">K值</option>
+                <option value="平均報酬率(%)" class="bg-slate-900">平均報酬</option>
+                <option value="平均成交金額" class="bg-slate-900">月均金額</option>
+                <option value="進場次數" class="bg-slate-900">交易次數</option>
+                <option value="勝率(%)" class="bg-slate-900">勝率</option>
+                <option value="報酬差" class="bg-slate-900">勝大盤差</option>
+                <option value="首次加入日期" class="bg-slate-900">入選日</option>
+                <option value="code" class="bg-slate-900">代號</option>
+              </select>
+              <button id="sortDirectionBtn" onclick="toggleSortDirection()" class="ml-1 p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition flex items-center" title="切換升降冪">
+                <span id="sortDirectionText" class="text-[10px] font-mono font-semibold text-cyan-400">降冪 ▼</span>
+              </button>
+            </div>
+
+            <!-- 進階篩選按鈕 -->
+            <button onclick="toggleAdvancedFilter()" id="advancedFilterToggleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 hover:text-white transition">
+              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>進階條件</span>
+              <span id="activeFilterBadge" class="hidden w-2 h-2 rounded-full bg-cyan-400"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 狀態標籤快捷列 -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
+          <button onclick="setFilter('all')" id="filterBtn-all" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 text-white font-medium transition">全部</button>
+          <button onclick="setFilter('value')" id="filterBtn-value" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">🏆 布局價值</button>
+          <button onclick="setFilter('heated')" id="filterBtn-heated" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">🔥 位階升溫</button>
+          <button onclick="setFilter('score2')" id="filterBtn-score2" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">⭐ 勝 0050</button>
+        </div>
+
+        <!-- 進階條件下拉面板 (可折疊，支援多重過濾) -->
+        <div id="advancedFilterPanel" class="hidden pt-3 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <!-- 1. KD 位階條件 -->
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">KD 位階</label>
+            <select id="filterKD" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="all">全部位階</option>
+              <option value="low">K &lt; 50 (低檔蓄勢)</option>
+              <option value="mid">50 ≤ K &lt; 85 (常態區)</option>
+              <option value="high">K ≥ 85 (高檔升溫)</option>
+            </select>
+          </div>
+
+          <!-- 2. 勝率門檻 -->
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">回測勝率門檻</label>
+            <select id="filterWinRate" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="all">不限勝率</option>
+              <option value="80">勝率 ≥ 80%</option>
+              <option value="90">勝率 ≥ 90%</option>
+              <option value="100">勝率 100%</option>
+            </select>
+          </div>
+
+          <!-- 3. 年化報酬率門檻 -->
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">年化報酬率門檻</label>
+            <select id="filterAnnualRet" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="all">不限年化</option>
+              <option value="15">年化 ≥ 15%</option>
+              <option value="30">年化 ≥ 30%</option>
+              <option value="50">年化 ≥ 50%</option>
+            </select>
+          </div>
+
+          <!-- 4. 月均金額 (流動性保護) -->
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">月均金額 (流動性)</label>
+            <div class="flex items-center gap-1.5">
+              <select id="filterVol" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                <option value="all">不限金額</option>
+                <option value="10000000">≥ 1,000 萬</option>
+                <option value="50000000">≥ 5,000 萬</option>
+                <option value="100000000">≥ 1 億</option>
+              </select>
+              <button onclick="resetAllFilters()" class="shrink-0 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition" title="重設條件">
+                重置
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -201,22 +285,42 @@
       <!-- 視圖 B：完整表格檢視 -->
       <div id="tableViewContainer" class="hidden">
         <div class="px-4 py-2 bg-slate-950/50 border-b border-slate-800/60 text-[11px] text-slate-400 flex items-center justify-between sm:hidden">
-          <span>💡 左右滑動可檢視完整欄位</span>
+          <span>💡 左右滑動檢視完整欄位 / 點選表頭可排序</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs whitespace-nowrap">
             <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider font-mono border-b border-slate-800 select-none">
               <tr>
-                <th onclick="sortTable('code')" class="py-3 px-3.5 cursor-pointer hover:text-white transition sticky-col border-r border-slate-800/80">代號 / 名稱</th>
-                <th onclick="sortTable('price')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">現價</th>
-                <th onclick="sortTable('K值')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">K值</th>
-                <th onclick="sortTable('平均報酬率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">平均報酬</th>
-                <th onclick="sortTable('平均成交金額')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">月均金額</th>
-                <th onclick="sortTable('年化報酬率')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">年化報酬率</th>
-                <th onclick="sortTable('進場次數')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">交易次數</th>
-                <th onclick="sortTable('勝率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">勝率</th>
-                <th onclick="sortTable('報酬差')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">勝大盤差</th>
-                <th onclick="sortTable('首次加入日期')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">入選日</th>
+                <th onclick="sortTable('code')" class="py-3 px-3.5 cursor-pointer hover:text-white transition sticky-col border-r border-slate-800/80">
+                  代號 / 名稱 <span id="sortIndicator-code" class="text-cyan-400"></span>
+                </th>
+                <th onclick="sortTable('price')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
+                  現價 <span id="sortIndicator-price" class="text-cyan-400"></span>
+                </th>
+                <th onclick="sortTable('K值')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">
+                  K值 <span id="sortIndicator-K值" class="text-cyan-400"></span>
+                </th>
+                <th onclick="sortTable('平均報酬率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
+                  平均報酬 <span id="sortIndicator-平均報酬率(%)" class="text-cyan-400"></span>
+                </th>
+                <th onclick="sortTable('平均成交金額')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
+                  月均金額 <span id="sortIndicator-平均成交金額" class="text-cyan-400"></span>
+                </th>
+                <th onclick="sortTable('年化報酬率')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
+                  年化報酬率 <span id="sortIndicator-年化報酬率" class="text-cyan-400"></span>
+                </th>
+                <th onclick="sortTable('進場次數')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
+                  交易次數 <span id="sortIndicator-進場次數" class="text-cyan-400"></span>
+                </th>
+                <th onclick="sortTable('勝率(%)')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
+                  勝率 <span id="sortIndicator-勝率(%)" class="text-cyan-400"></span>
+                </th>
+                <th onclick="sortTable('報酬差')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
+                  勝大盤差 <span id="sortIndicator-報酬差" class="text-cyan-400"></span>
+                </th>
+                <th onclick="sortTable('首次加入日期')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-center">
+                  入選日 <span id="sortIndicator-首次加入日期" class="text-cyan-400"></span>
+                </th>
                 <th class="py-3 px-3.5 text-center">狀態</th>
               </tr>
             </thead>
@@ -394,10 +498,26 @@
       }
     }
 
+    // 核心資料篩選與排序邏輯
     function getFilteredList() {
       const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      const kdFilter = document.getElementById('filterKD').value;
+      const winRateFilter = document.getElementById('filterWinRate').value;
+      const volFilter = document.getElementById('filterVol').value;
+      const retFilter = document.getElementById('filterAnnualRet').value;
+
+      // 檢查是否有套用進階條件，動態更新小紅點
+      const hasAdvanced = kdFilter !== 'all' || winRateFilter !== 'all' || volFilter !== 'all' || retFilter !== 'all';
+      const badge = document.getElementById('activeFilterBadge');
+      if (hasAdvanced) {
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+
       let list = [...rawData];
 
+      // 1. 搜尋字串過濾
       if (search) {
         list = list.filter(item => 
           item.code.toLowerCase().includes(search) || 
@@ -405,6 +525,7 @@
         );
       }
 
+      // 2. 標籤篩選
       if (currentFilter === 'value') {
         list = list.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0.1);
       } else if (currentFilter === 'heated') {
@@ -413,6 +534,34 @@
         list = list.filter(d => d['評分'] === 2);
       }
 
+      // 3. 進階條件 - KD 位階
+      if (kdFilter === 'low') {
+        list = list.filter(d => d['K值'] < 50);
+      } else if (kdFilter === 'mid') {
+        list = list.filter(d => d['K值'] >= 50 && d['K值'] < 85);
+      } else if (kdFilter === 'high') {
+        list = list.filter(d => d['K值'] >= 85);
+      }
+
+      // 4. 進階條件 - 勝率
+      if (winRateFilter !== 'all') {
+        const minWin = Number(winRateFilter);
+        list = list.filter(d => d['勝率(%)'] >= minWin);
+      }
+
+      // 5. 進階條件 - 年化報酬率
+      if (retFilter !== 'all') {
+        const minRet = Number(retFilter);
+        list = list.filter(d => d['年化報酬率'] >= minRet);
+      }
+
+      // 6. 進階條件 - 月均成交金額
+      if (volFilter !== 'all') {
+        const minVol = Number(volFilter);
+        list = list.filter(d => d['平均成交金額'] >= minVol);
+      }
+
+      // 7. 排序
       list.sort((a, b) => {
         let valA = a[sortColumn];
         let valB = b[sortColumn];
@@ -425,12 +574,16 @@
       return list;
     }
 
+    // 渲染清單與表格
     function renderListAndTable() {
       const list = getFilteredList();
       document.getElementById('filteredCountText').innerText = `(共 ${list.length} 檔)`;
 
       const cardContainer = document.getElementById('listViewContainer');
       const tbody = document.getElementById('tableBody');
+
+      // 更新排序指示標記
+      updateSortUI();
 
       if (list.length === 0) {
         const emptyHtml = `<div class="col-span-full py-8 text-center text-slate-500 text-xs">無符合條件之標的</div>`;
@@ -439,7 +592,7 @@
         return;
       }
 
-      // 1. 手機卡片模式
+      // 1. 卡片模式
       cardContainer.innerHTML = list.map(item => {
         const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0.1;
         const isHeated = item['K值'] >= 85;
@@ -496,7 +649,7 @@
         `;
       }).join('');
 
-      // 2. 表格模式 (依指定順序排列欄位)
+      // 2. 表格模式
       tbody.innerHTML = list.map(item => {
         const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0.1;
         const isHeated = item['K值'] >= 85;
@@ -547,6 +700,89 @@
       }).join('');
     }
 
+    // 更新排序狀態顯示 (同步表頭箭頭與下拉選單)
+    function updateSortUI() {
+      // 1. 同步下拉選單
+      const sortSelect = document.getElementById('sortSelect');
+      if (sortSelect && sortSelect.value !== sortColumn) {
+        sortSelect.value = sortColumn;
+      }
+
+      // 2. 更新按鈕升降文字
+      const sortDirText = document.getElementById('sortDirectionText');
+      if (sortDirText) {
+        sortDirText.innerText = sortAsc ? '升冪 ▲' : '降冪 ▼';
+      }
+
+      // 3. 更新表格欄位箭頭
+      const columns = ['code', 'price', 'K值', '平均報酬率(%)', '平均成交金額', '年化報酬率', '進場次數', '勝率(%)', '報酬差', '首次加入日期'];
+      columns.forEach(col => {
+        const indicator = document.getElementById('sortIndicator-' + col);
+        if (indicator) {
+          if (sortColumn === col) {
+            indicator.innerText = sortAsc ? '▲' : '▼';
+          } else {
+            indicator.innerText = '';
+          }
+        }
+      });
+    }
+
+    // 處理排序選單切換
+    function handleSortSelect(col) {
+      sortColumn = col;
+      renderListAndTable();
+    }
+
+    // 切換升降冪
+    function toggleSortDirection() {
+      sortAsc = !sortAsc;
+      renderListAndTable();
+    }
+
+    // 表格點擊表頭排序
+    function sortTable(col) {
+      if (sortColumn === col) {
+        sortAsc = !sortAsc;
+      } else {
+        sortColumn = col;
+        sortAsc = false;
+      }
+      renderListAndTable();
+    }
+
+    // 進階條件開關切換
+    function toggleAdvancedFilter() {
+      const panel = document.getElementById('advancedFilterPanel');
+      panel.classList.toggle('hidden');
+    }
+
+    // 一鍵重設所有篩選條件
+    function resetAllFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('filterKD').value = 'all';
+      document.getElementById('filterWinRate').value = 'all';
+      document.getElementById('filterAnnualRet').value = 'all';
+      document.getElementById('filterVol').value = 'all';
+      setFilter('all');
+    }
+
+    // 快捷標籤切換
+    function setFilter(type) {
+      currentFilter = type;
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('bg-slate-800', 'text-white', 'font-medium');
+        btn.classList.add('bg-slate-950', 'border', 'border-slate-800', 'text-slate-400');
+      });
+      const activeBtn = document.getElementById('filterBtn-' + type);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-slate-950', 'border', 'border-slate-800', 'text-slate-400');
+        activeBtn.classList.add('bg-slate-800', 'text-white', 'font-medium');
+      }
+      renderListAndTable();
+    }
+
+    // 檢視模式切換
     function setViewMode(mode) {
       currentViewMode = mode;
       const cardView = document.getElementById('listViewContainer');
@@ -565,30 +801,6 @@
         btnTable.className = 'px-2.5 py-1 rounded bg-slate-800 text-white font-medium transition flex items-center gap-1';
         btnCard.className = 'px-2.5 py-1 rounded text-slate-400 hover:text-white transition flex items-center gap-1';
       }
-    }
-
-    function sortTable(col) {
-      if (sortColumn === col) {
-        sortAsc = !sortAsc;
-      } else {
-        sortColumn = col;
-        sortAsc = false;
-      }
-      renderListAndTable();
-    }
-
-    function setFilter(type) {
-      currentFilter = type;
-      document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('bg-slate-800', 'text-white', 'font-medium');
-        btn.classList.add('bg-slate-950', 'border', 'border-slate-800', 'text-slate-400');
-      });
-      const activeBtn = document.getElementById('filterBtn-' + type);
-      if (activeBtn) {
-        activeBtn.classList.remove('bg-slate-950', 'border', 'border-slate-800', 'text-slate-400');
-        activeBtn.classList.add('bg-slate-800', 'text-white', 'font-medium');
-      }
-      renderListAndTable();
     }
 
     function renderAll() {
