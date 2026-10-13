@@ -8,7 +8,7 @@ on:
 
 jobs:
   run-screening:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: 簽出專案代碼 (Checkout)
@@ -32,6 +32,8 @@ jobs:
           rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
 
       - name: 安裝 Python 相依套件
+        env:
+          CFLAGS: "-Wno-incompatible-pointer-types -Wno-implicit-function-declaration -Wno-int-conversion"
         run: |
           python -m pip install --upgrade pip
           pip install ta-lib
