@@ -8,7 +8,7 @@ on:
 
 jobs:
   run-screening:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: 簽出專案代碼 (Checkout)
