@@ -64,7 +64,7 @@
             <h1 class="text-sm sm:text-base font-bold tracking-tight text-white truncate">台股 ETF 量化監控儀表板</h1>
             <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono shrink-0">v8 雲端</span>
           </div>
-          <p class="text-[10px] text-slate-400 truncate hidden sm:block">基準：0050 同期含息定期定額 ｜ 策略：動態加碼回測 + KD 位階評估</p>
+          <p class="text-[10px] text-slate-400 truncate hidden sm:block">基準：0050 同期含息報酬 ｜ 策略：定期定額日日扣 + KD 位階評估</p>
         </div>
       </div>
       
@@ -86,16 +86,16 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
       <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-3 sm:p-4 shadow-sm">
         <div class="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs mb-1">
-          <span>監控標的</span>
+          <span>入選標的數</span>
           <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-500"></i>
         </div>
         <div class="text-xl sm:text-2xl font-bold font-mono text-white" id="statTotalCount">--</div>
-        <div class="text-[10px] text-slate-500 mt-0.5 truncate">符合基本篩選標的</div>
+        <div class="text-[10px] text-slate-500 mt-0.5 truncate">同期報酬勝過0050</div>
       </div>
 	  
 	  <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-3 sm:p-4 shadow-sm">
         <div class="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs mb-1">
-          <span>策略平均勝率</span>
+          <span>平均勝率</span>
           <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-cyan-400"></i>
         </div>
         <div class="text-xl sm:text-2xl font-bold font-mono text-cyan-400" id="statAvgWinRate">--%</div>
@@ -104,20 +104,20 @@
 
       <div class="bg-slate-900 border border-emerald-900/30 rounded-xl p-3 sm:p-4 shadow-sm bg-gradient-to-br from-slate-900 to-emerald-950/20">
         <div class="flex items-center justify-between text-emerald-400 text-[11px] sm:text-xs mb-1">
-          <span>🏆 布局價值</span>
+          <span>🏆 布局價值檔數</span>
           <i data-lucide="target" class="w-3.5 h-3.5 text-emerald-400"></i>
         </div>
         <div class="text-xl sm:text-2xl font-bold font-mono text-emerald-400" id="statValueCount">--</div>
-        <div class="text-[10px] text-slate-500 mt-0.5 truncate">K &lt; 50 且勝 0050</div>
+        <div class="text-[10px] text-slate-500 mt-0.5 truncate">K值 &lt; 50</div>
       </div>
 
       <div class="bg-slate-900 border border-amber-900/30 rounded-xl p-3 sm:p-4 shadow-sm bg-gradient-to-br from-slate-900 to-amber-950/20">
         <div class="flex items-center justify-between text-amber-400 text-[11px] sm:text-xs mb-1">
-          <span>🔥 位階升溫</span>
+          <span>🔥 位階升溫檔數</span>
           <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400"></i>
         </div>
         <div class="text-xl sm:text-2xl font-bold font-mono text-amber-400" id="statHeatedCount">--</div>
-        <div class="text-[10px] text-slate-500 mt-0.5 truncate">K ≥ 85 高檔過熱</div>
+        <div class="text-[10px] text-slate-500 mt-0.5 truncate">K值 ≥ 85 </div>
       </div>
 
     </div>
@@ -127,10 +127,10 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div class="flex items-center space-x-2">
           <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></div>
-          <h2 class="text-base sm:text-lg font-bold text-white tracking-wide">🏆 布局價值標的 (低檔蓄勢)</h2>
+          <h2 class="text-base sm:text-lg font-bold text-white tracking-wide">🏆 布局價值標的</h2>
           <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium" id="valueBadge">0 檔</span>
         </div>
-        <span class="text-[11px] text-slate-400">定期定額勝大盤 + 報酬差 ≥ 10% + K &lt; 50</span>
+        <span class="text-[11px] text-slate-400">同期定期定額勝0050 且 K值 &lt; 50</span>
       </div>
       <div id="valueCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <!-- 動態卡片渲染 -->
@@ -142,7 +142,7 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div class="flex items-center space-x-2">
           <div class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></div>
-          <h2 class="text-base sm:text-lg font-bold text-white tracking-wide">🔥 位階升溫標的 (短線過熱警示)</h2>
+          <h2 class="text-base sm:text-lg font-bold text-white tracking-wide">🔥 位階升溫標的</h2>
           <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium" id="heatedBadge">0 檔</span>
         </div>
         <span class="text-[11px] text-slate-400">K值 ≥ 85，留意短線獲利調節或避免追高</span>
@@ -195,7 +195,7 @@
                 <option value="年化報酬率" class="bg-slate-900">年化報酬率</option>
                 <option value="price" class="bg-slate-900">現價</option>
                 <option value="K值" class="bg-slate-900">K值</option>
-                <option value="平均報酬率(%)" class="bg-slate-900">平均報酬</option>
+                <option value="平均報酬率(%)" class="bg-slate-900" selected>平均報酬</option>
                 <option value="平均成交金額" class="bg-slate-900">月均金額</option>
                 <option value="進場次數" class="bg-slate-900">交易次數</option>
                 <option value="勝率(%)" class="bg-slate-900">勝率</option>
@@ -293,7 +293,7 @@
             <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider font-mono border-b border-slate-800 select-none">
               <tr>
                 <th onclick="sortTable('code')" class="py-3 px-3.5 cursor-pointer hover:text-white transition sticky-col border-r border-slate-800/80">
-                  代號 / 名稱 <span id="sortIndicator-code" class="text-cyan-400"></span>
+                  名稱 / 代號 <span id="sortIndicator-code" class="text-cyan-400"></span>
                 </th>
                 <th onclick="sortTable('price')" class="py-3 px-3.5 cursor-pointer hover:text-white transition text-right">
                   現價 <span id="sortIndicator-price" class="text-cyan-400"></span>
@@ -437,7 +437,7 @@
               </div>
               <div class="text-right">
                 <div class="text-base sm:text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
-                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">K: ${item['K值']}</div>
+                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">K值: ${item['K值']}</div>
               </div>
             </div>
             <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
@@ -478,7 +478,7 @@
               </div>
               <div class="text-right">
                 <div class="text-base sm:text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
-                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">🔥 K: ${item['K值']}</div>
+                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">🔥 K值: ${item['K值']}</div>
               </div>
             </div>
             <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
@@ -623,7 +623,7 @@
                 <span class="text-base font-bold font-mono text-white">$${item.price.toFixed(2)}</span>
               </div>
               <div class="text-xs font-mono px-2 py-0.5 rounded border ${getKDClass(item['K值'])}">
-                K: ${item['K值'].toFixed(1)}
+                K值: ${item['K值'].toFixed(1)}
               </div>
             </div>
 
