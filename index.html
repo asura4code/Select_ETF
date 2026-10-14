@@ -375,6 +375,16 @@
       return 'text-slate-300 bg-slate-800 border-slate-700';
     };
 
+    // 相較於 0050 動態色彩強調判斷函式
+    function getCompareColors(item) {
+      const base0050 = rawData.find(d => d.code === '0050.TW' || d.code === '0050' || d.ticker === '元大台灣50');
+      return {
+        avgRetColor: (base0050 && item['平均報酬率(%)'] > base0050['平均報酬率(%)']) ? 'text-orange-400' : 'text-white',
+        annualColor: (base0050 && item['年化報酬率'] > base0050['年化報酬率']) ? 'text-emerald-400' : 'text-white',
+        winRateColor: (base0050 && item['勝率(%)'] > base0050['勝率(%)']) ? 'text-cyan-400' : 'text-white'
+      };
+    }
+
     async function loadExcelData() {
       const statusText = document.getElementById('updateTimeText');
       statusText.innerText = '讀取中...';
@@ -421,12 +431,9 @@
     }
 
     function renderKPIsAndCards() {
-      // 條件改為 d['報酬差'] >= 0，讓 0050 (報酬差 = 0) 在 K < 50 時也能出現
+      // 條件為 d['報酬差'] >= 0，讓 0050 (報酬差 = 0) 在 K < 50 時也能出現
       const valueList = rawData.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0);
       const heatedList = rawData.filter(d => d['K值'] >= 85);
-
-      // 尋找 0050 基準資料供顏色強調比對
-      const base0050 = rawData.find(d => d.code === '0050.TW' || d.code === '0050' || d.ticker === '元大台灣50');
 
       document.getElementById('statTotalCount').innerText = formatNum(rawData.length, 0);
       document.getElementById('statValueCount').innerText = formatNum(valueList.length, 0);
@@ -455,10 +462,7 @@
           </div>`;
       } else {
         valueContainer.innerHTML = valueList.map(item => {
-          // 相較於 0050 為高時才使用強調色，否則使用白色
-          const avgRetColor = (base0050 && item['平均報酬率(%)'] > base0050['平均報酬率(%)']) ? 'text-orange-400' : 'text-white';
-          const annualColor = (base0050 && item['年化報酬率'] > base0050['年化報酬率']) ? 'text-emerald-400' : 'text-white';
-          const winRateColor = (base0050 && item['勝率(%)'] > base0050['勝率(%)']) ? 'text-cyan-400' : 'text-white';
+          const { avgRetColor, annualColor, winRateColor } = getCompareColors(item);
 
           return `
           <div class="bg-slate-950/80 border border-emerald-500/40 hover:border-emerald-400 rounded-xl p-3.5 sm:p-4 shadow-lg transition space-y-3">
@@ -630,10 +634,11 @@
         return;
       }
 
-      // 1. 卡片模式
+      // 1. 卡片模式 (套用相較 0050 動態色彩強調)
       cardContainer.innerHTML = list.map(item => {
         const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0;
         const isHeated = item['K值'] >= 85;
+        const { avgRetColor, annualColor, winRateColor } = getCompareColors(item);
 
         let badge = '';
         if (isValue) {
@@ -667,7 +672,7 @@
             <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/60 text-xs">
               <div>
                 <span class="text-[10px] text-slate-500 block">平均報酬率</span>
-                <span class="font-bold font-mono text-slate-300">${formatNum(item['平均報酬率(%)'], 2)}%</span>
+                <span class="font-bold font-mono ${avgRetColor}">${formatNum(item['平均報酬率(%)'], 2)}%</span>
               </div>
               <div>
                 <span class="text-[10px] text-slate-500 block">月均金額</span>
@@ -675,22 +680,23 @@
               </div>
               <div>
                 <span class="text-[10px] text-slate-500 block">年化報酬率</span>
-                <span class="font-bold font-mono text-emerald-400">${formatNum(Math.round(item['年化報酬率']), 0)}%</span>
+                <span class="font-bold font-mono ${annualColor}">${formatNum(Math.round(item['年化報酬率']), 0)}%</span>
               </div>
             </div>
 
             <div class="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-800/40 font-mono">
-              <span>交易: ${formatNum(item['進場次數'], 0)}次 ｜ 勝率: ${formatNum(item['勝率(%)'], 1)}%</span>
+              <span>交易: ${formatNum(item['進場次數'], 0)}次 ｜ 勝率: <span class="font-bold ${winRateColor}">${formatNum(item['勝率(%)'], 1)}%</span></span>
               <span>入選日: ${item['首次加入日期']}</span>
             </div>
           </div>
         `;
       }).join('');
 
-      // 2. 表格模式
+      // 2. 表格模式 (套用相較 0050 動態色彩強調)
       tbody.innerHTML = list.map(item => {
         const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0;
         const isHeated = item['K值'] >= 85;
+        const { avgRetColor, annualColor, winRateColor } = getCompareColors(item);
 
         let statusTag = '<span class="text-slate-500 text-[11px]">-</span>';
         if (isValue) {
@@ -716,15 +722,15 @@
               </span>
             </td>
             <!-- 3. 平均報酬率 -->
-            <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">${formatNum(item['平均報酬率(%)'], 2)}%</td>
+            <td class="py-2.5 px-3.5 text-right font-mono font-bold ${avgRetColor}">${formatNum(item['平均報酬率(%)'], 2)}%</td>
             <!-- 4. 月均金額 -->
             <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${formatMoney(item['平均成交金額'])}</td>
             <!-- 5. 年化報酬率 -->
-            <td class="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-400">${formatNum(Math.round(item['年化報酬率']), 0)}%</td>
+            <td class="py-2.5 px-3.5 text-right font-mono font-bold ${annualColor}">${formatNum(Math.round(item['年化報酬率']), 0)}%</td>
             <!-- 6. 交易次數 -->
             <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${formatNum(item['進場次數'], 0)}</td>
             <!-- 7. 勝率 -->
-            <td class="py-2.5 px-3.5 text-right font-mono font-semibold ${item['勝率(%)'] >= 90 ? 'text-cyan-400' : 'text-slate-300'}">
+            <td class="py-2.5 px-3.5 text-right font-mono font-semibold ${winRateColor}">
               ${formatNum(item['勝率(%)'], 1)}%
             </td>
             <!-- 8. 勝大盤差 -->
