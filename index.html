@@ -86,7 +86,7 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
       <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-3 sm:p-4 shadow-sm">
         <div class="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs mb-1">
-          <span>入選標的數</span>
+          <span>候選標的數</span>
           <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-500"></i>
         </div>
         <div class="text-xl sm:text-2xl font-bold font-mono text-white" id="statTotalCount">--</div>
@@ -159,7 +159,7 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <i data-lucide="layers" class="w-4 h-4 text-cyan-400"></i>
-            <h2 class="text-sm sm:text-base font-bold text-white">全清單檢索</h2>
+            <h2 class="text-sm sm:text-base font-bold text-white">候選清單檢索</h2>
             <span class="text-[11px] text-slate-400" id="filteredCountText">(共 0 檔)</span>
           </div>
 
@@ -233,9 +233,9 @@
             <label class="block text-[11px] text-slate-400 mb-1">KD 位階</label>
             <select id="filterKD" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
               <option value="all">全部位階</option>
-              <option value="low">K &lt; 50 (低檔蓄勢)</option>
-              <option value="mid">50 ≤ K &lt; 85 (常態區)</option>
-              <option value="high">K ≥ 85 (高檔升溫)</option>
+              <option value="low">K &lt; 20</option>
+              <option value="mid">20 ≤ K &lt; 40</option>
+              <option value="high">K ≥ 40</option>
             </select>
           </div>
 
@@ -541,12 +541,19 @@
       }
 
       // 3. 進階條件 - KD 位階
-      if (kdFilter === 'low') {
-        list = list.filter(d => d['K值'] < 50);
+      <!-- if (kdFilter === 'low') { -->
+        <!-- list = list.filter(d => d['K值'] < 50); -->
+      <!-- } else if (kdFilter === 'mid') { -->
+        <!-- list = list.filter(d => d['K值'] >= 50 && d['K值'] < 85); -->
+      <!-- } else if (kdFilter === 'high') { -->
+        <!-- list = list.filter(d => d['K值'] >= 85); -->
+      <!-- } -->
+	  if (kdFilter === 'low') {
+        list = list.filter(d => d['K值'] < 20);
       } else if (kdFilter === 'mid') {
-        list = list.filter(d => d['K值'] >= 50 && d['K值'] < 85);
+        list = list.filter(d => d['K值'] >= 20 && d['K值'] < 40);
       } else if (kdFilter === 'high') {
-        list = list.filter(d => d['K值'] >= 85);
+        list = list.filter(d => d['K值'] >= 40);
       }
 
       // 4. 進階條件 - 勝率
