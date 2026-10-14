@@ -93,9 +93,9 @@
         <div class="text-[10px] text-slate-500 mt-0.5 truncate">同期報酬勝過0050</div>
       </div>
 	  
-	  <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-3 sm:p-4 shadow-sm">
+      <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-3 sm:p-4 shadow-sm">
         <div class="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs mb-1">
-          <span>平均勝率</span>
+          <span>平均年化報酬率</span>
           <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-cyan-400"></i>
         </div>
         <div class="text-xl sm:text-2xl font-bold font-mono text-cyan-400" id="statAvgWinRate">--%</div>
@@ -122,32 +122,32 @@
 
     </div>
 
-    <!-- 區塊 1：具有布局價值標的 -->
-    <section class="space-y-3">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+    <!-- 區塊 1：具有布局價值標的 (加上顯眼外框區分) -->
+    <section class="bg-slate-900 border-2 border-emerald-500/40 rounded-xl overflow-hidden shadow-xl shadow-emerald-950/20">
+      <div class="p-3.5 sm:p-5 border-b border-emerald-500/20 bg-emerald-950/10 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div class="flex items-center space-x-2">
           <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></div>
-          <h2 class="text-base sm:text-lg font-bold text-white tracking-wide">🏆 布局價值標的</h2>
+          <h2 class="text-sm sm:text-base font-bold text-white tracking-wide">🏆 布局價值標的</h2>
           <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium" id="valueBadge">0 檔</span>
         </div>
-        <span class="text-[11px] text-slate-400">同期定期定額勝0050 且 K值 &lt; 50</span>
+        <span class="text-[11px] text-slate-400">同期定期定額 ≥ 0050 且 K值 &lt; 50</span>
       </div>
-      <div id="valueCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div id="valueCardsContainer" class="p-3.5 sm:p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <!-- 動態卡片渲染 -->
       </div>
     </section>
 
-    <!-- 區塊 2：位階升溫標的 -->
-    <section class="space-y-3">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+    <!-- 區塊 2：位階升溫標的 (加上顯眼外框區分) -->
+    <section class="bg-slate-900 border-2 border-amber-500/40 rounded-xl overflow-hidden shadow-xl shadow-amber-950/20">
+      <div class="p-3.5 sm:p-5 border-b border-amber-500/20 bg-amber-950/10 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div class="flex items-center space-x-2">
           <div class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></div>
-          <h2 class="text-base sm:text-lg font-bold text-white tracking-wide">🔥 位階升溫標的</h2>
+          <h2 class="text-sm sm:text-base font-bold text-white tracking-wide">🔥 位階升溫標的</h2>
           <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium" id="heatedBadge">0 檔</span>
         </div>
         <span class="text-[11px] text-slate-400">K值 ≥ 85，留意短線獲利調節或避免追高</span>
       </div>
-      <div id="heatedCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div id="heatedCardsContainer" class="p-3.5 sm:p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <!-- 動態卡片渲染 -->
       </div>
     </section>
@@ -196,7 +196,6 @@
                 <option value="年化報酬率" class="bg-slate-900">年化報酬率</option>
                 <option value="price" class="bg-slate-900">現價</option>
                 <option value="K值" class="bg-slate-900">K值</option>
-											   
                 <option value="平均成交金額" class="bg-slate-900">月均金額</option>
                 <option value="進場次數" class="bg-slate-900">交易次數</option>
                 <option value="勝率(%)" class="bg-slate-900">勝率</option>
@@ -342,12 +341,31 @@
     let sortAsc = false;
     let currentViewMode = window.innerWidth < 768 ? 'card' : 'table';
 
+    // 固定小數位數之千分位格式化
+    const formatNum = (val, decimals = 0) => {
+      if (val === null || val === undefined || isNaN(val)) return '-';
+      return Number(val).toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    };
+
+    // 彈性小數位數之千分位格式化 (最多保留 maxDecimals 位)
+    const formatNumAuto = (val, maxDecimals = 2) => {
+      if (val === null || val === undefined || isNaN(val)) return '-';
+      return Number(val).toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: maxDecimals
+      });
+    };
+
+    // 金額格式化 (支援千分位)
     const formatMoney = (val) => {
       if (!val || isNaN(val)) return '-';
       const num = Number(val);
-      if (num >= 1e8) return (num / 1e8).toFixed(2) + ' 億';
-      if (num >= 1e4) return (num / 1e4).toFixed(0) + ' 萬';
-      return num.toLocaleString();
+      if (num >= 1e8) return formatNum(num / 1e8, 2) + ' 億';
+      if (num >= 1e4) return formatNum(num / 1e4, 0) + ' 萬';
+      return formatNum(num, 0);
     };
 
     const getKDClass = (k) => {
@@ -403,97 +421,111 @@
     }
 
     function renderKPIsAndCards() {
-      const valueList = rawData.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0.1);
+      // 條件改為 d['報酬差'] >= 0，讓 0050 (報酬差 = 0) 在 K < 50 時也能出現
+      const valueList = rawData.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0);
       const heatedList = rawData.filter(d => d['K值'] >= 85);
 
-      document.getElementById('statTotalCount').innerText = rawData.length;
-      document.getElementById('statValueCount').innerText = valueList.length;
-      document.getElementById('statHeatedCount').innerText = heatedList.length;
+      // 尋找 0050 基準資料供顏色強調比對
+      const base0050 = rawData.find(d => d.code === '0050.TW' || d.code === '0050' || d.ticker === '元大台灣50');
 
-      const avgWinRate = rawData.length ? (rawData.reduce((acc, cur) => acc + cur['勝率(%)'], 0) / rawData.length).toFixed(1) : 0;
-      document.getElementById('statAvgWinRate').innerText = avgWinRate + '%';
+      document.getElementById('statTotalCount').innerText = formatNum(rawData.length, 0);
+      document.getElementById('statValueCount').innerText = formatNum(valueList.length, 0);
+      document.getElementById('statHeatedCount').innerText = formatNum(heatedList.length, 0);
+
+      // 計算平均年化報酬率
+      const avgAnnualRet = rawData.length
+        ? rawData.reduce((acc, cur) => acc + cur['年化報酬率'], 0) / rawData.length
+        : 0;
+      document.getElementById('statAvgWinRate').innerText = formatNum(avgAnnualRet, 1) + '%';
 
       const topAnnual = [...rawData].sort((a, b) => b['年化報酬率'] - a['年化報酬率'])[0];
       if (topAnnual) {
-        document.getElementById('statTopAnnual').innerText = `最高：${topAnnual.ticker} (${Math.round(topAnnual['年化報酬率'])}%)`;
+        document.getElementById('statTopAnnual').innerText = `最高：${topAnnual.ticker} (${formatNum(Math.round(topAnnual['年化報酬率']), 0)}%)`;
       }
 
-      document.getElementById('valueBadge').innerText = `${valueList.length} 檔`;
-      document.getElementById('heatedBadge').innerText = `${heatedList.length} 檔`;
+      document.getElementById('valueBadge').innerText = `${formatNum(valueList.length, 0)} 檔`;
+      document.getElementById('heatedBadge').innerText = `${formatNum(heatedList.length, 0)} 檔`;
 
       // 布局價值卡片
       const valueContainer = document.getElementById('valueCardsContainer');
       if (valueList.length === 0) {
         valueContainer.innerHTML = `
-          <div class="col-span-full p-4 sm:p-6 text-center bg-slate-900/40 border border-slate-800 rounded-xl text-slate-500 text-xs">
+          <div class="col-span-full p-4 sm:p-6 text-center bg-slate-950/50 border border-slate-800 rounded-xl text-slate-500 text-xs">
             🌿 今日無 K &lt; 50 且勝 0050 之低檔標的，行情多數處於升溫或整理狀態，保持耐性等待回測機會。
           </div>`;
       } else {
-        valueContainer.innerHTML = valueList.map(item => `
-          <div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-emerald-900/40 rounded-xl p-3.5 sm:p-4 shadow-lg space-y-3">
+        valueContainer.innerHTML = valueList.map(item => {
+          // 相較於 0050 為高時才使用強調色，否則使用白色
+          const avgRetColor = (base0050 && item['平均報酬率(%)'] > base0050['平均報酬率(%)']) ? 'text-orange-400' : 'text-white';
+          const annualColor = (base0050 && item['年化報酬率'] > base0050['年化報酬率']) ? 'text-emerald-400' : 'text-white';
+          const winRateColor = (base0050 && item['勝率(%)'] > base0050['勝率(%)']) ? 'text-cyan-400' : 'text-white';
+
+          return `
+          <div class="bg-slate-950/80 border border-emerald-500/40 hover:border-emerald-400 rounded-xl p-3.5 sm:p-4 shadow-lg transition space-y-3">
             <div class="flex items-start justify-between">
               <div>
                 <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">${item.code}</span>
                 <h3 class="text-sm sm:text-base font-bold text-white mt-1">${item.ticker}</h3>
               </div>
               <div class="text-right">
-                <div class="text-base sm:text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
-                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">K值: ${item['K值']}</div>
+                <div class="text-base sm:text-lg font-bold font-mono text-white">$${formatNum(item.price, 2)}</div>
+                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">K值: ${formatNumAuto(item['K值'], 2)}</div>
               </div>
             </div>
             <div class="grid grid-cols-4 gap-1.5 sm:gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
               <div>
                 <span class="text-[10px] text-slate-500 block truncate">平均報酬率</span>
-                <span class="font-bold font-mono text-slate-300 text-xs sm:text-sm">${item['平均報酬率(%)'].toFixed(2)}%</span>
+                <span class="font-bold font-mono ${avgRetColor} text-xs sm:text-sm">${formatNum(item['平均報酬率(%)'], 2)}%</span>
               </div>
               <div>
                 <span class="text-[10px] text-slate-500 block truncate">年化報酬率</span>
-                <span class="font-bold font-mono text-emerald-400 text-xs sm:text-sm">${Math.round(item['年化報酬率'])}%</span>
+                <span class="font-bold font-mono ${annualColor} text-xs sm:text-sm">${formatNum(Math.round(item['年化報酬率']), 0)}%</span>
               </div>
               <div>
                 <span class="text-[10px] text-slate-500 block truncate">勝率</span>
-                <span class="font-bold font-mono text-cyan-400 text-xs sm:text-sm">${item['勝率(%)']}%</span>
+                <span class="font-bold font-mono ${winRateColor} text-xs sm:text-sm">${formatNumAuto(item['勝率(%)'], 2)}%</span>
               </div>
               <div>
                 <span class="text-[10px] text-slate-500 block truncate">同期贏大盤</span>
-                <span class="font-bold font-mono text-white text-xs sm:text-sm">+${(item['報酬差'] * 100).toFixed(1)}%</span>
+                <span class="font-bold font-mono text-white text-xs sm:text-sm">+${formatNum(item['報酬差'] * 100, 1)}%</span>
               </div>
             </div>
             <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-800/40 font-mono">
               <span>月均金額: ${formatMoney(item['平均成交金額'])}</span>
               <span>入選日: ${item['首次加入日期']}</span>
             </div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
       }
 
       // 位階升溫卡片
       const heatedContainer = document.getElementById('heatedCardsContainer');
       if (heatedList.length === 0) {
         heatedContainer.innerHTML = `
-          <div class="col-span-full p-4 sm:p-6 text-center bg-slate-900/40 border border-slate-800 rounded-xl text-slate-500 text-xs">
+          <div class="col-span-full p-4 sm:p-6 text-center bg-slate-950/50 border border-slate-800 rounded-xl text-slate-500 text-xs">
             今日無 K ≥ 85 之過熱標的。
           </div>`;
       } else {
         heatedContainer.innerHTML = heatedList.map(item => `
-          <div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-amber-900/40 rounded-xl p-3.5 sm:p-4 shadow-lg space-y-3">
+          <div class="bg-slate-950/80 border border-amber-500/40 hover:border-amber-400 rounded-xl p-3.5 sm:p-4 shadow-lg transition space-y-3">
             <div class="flex items-start justify-between">
               <div>
                 <span class="text-[11px] font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">${item.code}</span>
                 <h3 class="text-sm sm:text-base font-bold text-white mt-1">${item.ticker}</h3>
               </div>
               <div class="text-right">
-                <div class="text-base sm:text-lg font-bold font-mono text-white">$${item.price.toFixed(2)}</div>
-                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">🔥 K值: ${item['K值']}</div>
+                <div class="text-base sm:text-lg font-bold font-mono text-white">$${formatNum(item.price, 2)}</div>
+                <div class="text-[10px] px-1.5 py-0.5 rounded border font-mono inline-block mt-0.5 ${getKDClass(item['K值'])}">🔥 K值: ${formatNumAuto(item['K值'], 2)}</div>
               </div>
             </div>
             <div class="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-800/80 text-xs">
               <div>
                 <span class="text-[10px] text-slate-500 block">年化報酬率</span>
-                <span class="font-bold font-mono text-amber-400 text-sm">${Math.round(item['年化報酬率'])}%</span>
+                <span class="font-bold font-mono text-amber-400 text-sm">${formatNum(Math.round(item['年化報酬率']), 0)}%</span>
               </div>
               <div>
                 <span class="text-[10px] text-slate-500 block">勝率</span>
-                <span class="font-bold font-mono text-slate-200 text-sm">${item['勝率(%)']}%</span>
+                <span class="font-bold font-mono text-slate-200 text-sm">${formatNumAuto(item['勝率(%)'], 2)}%</span>
               </div>
               <div>
                 <span class="text-[10px] text-slate-500 block">月均金額</span>
@@ -531,9 +563,9 @@
         );
       }
 
-      // 2. 標籤篩選
+      // 2. 標籤篩選 (報酬差 >= 0 納入 0050)
       if (currentFilter === 'value') {
-        list = list.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0.1);
+        list = list.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0);
       } else if (currentFilter === 'heated') {
         list = list.filter(d => d['K值'] >= 85);
       } else if (currentFilter === 'score2') {
@@ -541,14 +573,7 @@
       }
 
       // 3. 進階條件 - KD 位階
-      <!-- if (kdFilter === 'low') { -->
-        <!-- list = list.filter(d => d['K值'] < 50); -->
-      <!-- } else if (kdFilter === 'mid') { -->
-        <!-- list = list.filter(d => d['K值'] >= 50 && d['K值'] < 85); -->
-      <!-- } else if (kdFilter === 'high') { -->
-        <!-- list = list.filter(d => d['K值'] >= 85); -->
-      <!-- } -->
-	  if (kdFilter === 'low') {
+      if (kdFilter === 'low') {
         list = list.filter(d => d['K值'] < 20);
       } else if (kdFilter === 'mid') {
         list = list.filter(d => d['K值'] >= 20 && d['K值'] < 40);
@@ -590,7 +615,7 @@
     // 渲染清單與表格
     function renderListAndTable() {
       const list = getFilteredList();
-      document.getElementById('filteredCountText').innerText = `(共 ${list.length} 檔)`;
+      document.getElementById('filteredCountText').innerText = `(共 ${formatNum(list.length, 0)} 檔)`;
 
       const cardContainer = document.getElementById('listViewContainer');
       const tbody = document.getElementById('tableBody');
@@ -607,7 +632,7 @@
 
       // 1. 卡片模式
       cardContainer.innerHTML = list.map(item => {
-        const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0.1;
+        const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0;
         const isHeated = item['K值'] >= 85;
 
         let badge = '';
@@ -632,17 +657,17 @@
             <div class="flex items-baseline justify-between pt-1">
               <div>
                 <span class="text-xs text-slate-500">現價 </span>
-                <span class="text-base font-bold font-mono text-white">$${item.price.toFixed(2)}</span>
+                <span class="text-base font-bold font-mono text-white">$${formatNum(item.price, 2)}</span>
               </div>
               <div class="text-xs font-mono px-2 py-0.5 rounded border ${getKDClass(item['K值'])}">
-                K值: ${item['K值'].toFixed(1)}
+                K值: ${formatNum(item['K值'], 1)}
               </div>
             </div>
 
             <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/60 text-xs">
               <div>
                 <span class="text-[10px] text-slate-500 block">平均報酬率</span>
-                <span class="font-bold font-mono text-slate-300">${item['平均報酬率(%)'].toFixed(2)}%</span>
+                <span class="font-bold font-mono text-slate-300">${formatNum(item['平均報酬率(%)'], 2)}%</span>
               </div>
               <div>
                 <span class="text-[10px] text-slate-500 block">月均金額</span>
@@ -650,12 +675,12 @@
               </div>
               <div>
                 <span class="text-[10px] text-slate-500 block">年化報酬率</span>
-                <span class="font-bold font-mono text-emerald-400">${Math.round(item['年化報酬率'])}%</span>
+                <span class="font-bold font-mono text-emerald-400">${formatNum(Math.round(item['年化報酬率']), 0)}%</span>
               </div>
             </div>
 
             <div class="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-800/40 font-mono">
-              <span>交易: ${item['進場次數']}次 ｜ 勝率: ${item['勝率(%)'].toFixed(1)}%</span>
+              <span>交易: ${formatNum(item['進場次數'], 0)}次 ｜ 勝率: ${formatNum(item['勝率(%)'], 1)}%</span>
               <span>入選日: ${item['首次加入日期']}</span>
             </div>
           </div>
@@ -664,7 +689,7 @@
 
       // 2. 表格模式
       tbody.innerHTML = list.map(item => {
-        const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0.1;
+        const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0;
         const isHeated = item['K值'] >= 85;
 
         let statusTag = '<span class="text-slate-500 text-[11px]">-</span>';
@@ -683,27 +708,27 @@
               <div class="text-[10px] text-slate-400 font-mono">${item.code}</div>
             </td>
             <!-- 1. 現價 -->
-            <td class="py-2.5 px-3.5 text-right font-mono font-bold text-slate-100">$${item.price.toFixed(2)}</td>
+            <td class="py-2.5 px-3.5 text-right font-mono font-bold text-slate-100">$${formatNum(item.price, 2)}</td>
             <!-- 2. K值 -->
             <td class="py-2.5 px-3.5 text-center">
               <span class="inline-block px-1.5 py-0.5 rounded border text-[11px] font-mono font-semibold ${getKDClass(item['K值'])}">
-                ${item['K值'].toFixed(1)}
+                ${formatNum(item['K值'], 1)}
               </span>
             </td>
             <!-- 3. 平均報酬率 -->
-            <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">${item['平均報酬率(%)'].toFixed(2)}%</td>
+            <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">${formatNum(item['平均報酬率(%)'], 2)}%</td>
             <!-- 4. 月均金額 -->
             <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${formatMoney(item['平均成交金額'])}</td>
             <!-- 5. 年化報酬率 -->
-            <td class="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-400">${Math.round(item['年化報酬率'])}%</td>
+            <td class="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-400">${formatNum(Math.round(item['年化報酬率']), 0)}%</td>
             <!-- 6. 交易次數 -->
-            <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${item['進場次數']}</td>
+            <td class="py-2.5 px-3.5 text-right font-mono text-slate-400">${formatNum(item['進場次數'], 0)}</td>
             <!-- 7. 勝率 -->
             <td class="py-2.5 px-3.5 text-right font-mono font-semibold ${item['勝率(%)'] >= 90 ? 'text-cyan-400' : 'text-slate-300'}">
-              ${item['勝率(%)'].toFixed(1)}%
+              ${formatNum(item['勝率(%)'], 1)}%
             </td>
             <!-- 8. 勝大盤差 -->
-            <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">+${(item['報酬差'] * 100).toFixed(1)}%</td>
+            <td class="py-2.5 px-3.5 text-right font-mono text-slate-300">+${formatNum(item['報酬差'] * 100, 1)}%</td>
             <!-- 9. 入選日 -->
             <td class="py-2.5 px-3.5 text-center font-mono text-slate-400 text-[11px]">${item['首次加入日期']}</td>
             <!-- 10. 狀態 -->
