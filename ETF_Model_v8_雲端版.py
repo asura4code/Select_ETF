@@ -908,8 +908,8 @@ else:
 lines.append('━━━━━━━━━━━━━━━━━━')
 
 # 區塊二：位階過熱警戒
+lines.append(f'🔥 <b>位階升溫 共 {len(heated_df)} 檔：</b>')
 if len(heated_df) > 0:
-  lines.append(f'🔥 <b>位階升溫 共 {len(heated_df)} 檔：</b>')
   heated_df['年化報酬率_int'] = heated_df['年化報酬率'].astype(int)
   for sym, row in heated_df.iterrows():
     lines.append(
