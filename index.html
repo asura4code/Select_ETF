@@ -108,7 +108,7 @@
           <i data-lucide="target" class="w-3.5 h-3.5 text-emerald-400"></i>
         </div>
         <div class="text-xl sm:text-2xl font-bold font-mono text-emerald-400" id="statValueCount">--</div>
-        <div class="text-[10px] text-slate-500 mt-0.5 truncate">K值 &lt; 50</div>
+        <div class="text-[10px] text-slate-500 mt-0.5 truncate">K值 &lt; 50 (含 0050)</div>
       </div>
 
       <div class="bg-slate-900 border border-amber-900/30 rounded-xl p-3 sm:p-4 shadow-sm bg-gradient-to-br from-slate-900 to-amber-950/20">
@@ -130,7 +130,7 @@
           <h2 class="text-sm sm:text-base font-bold text-white tracking-wide">🏆 布局價值標的</h2>
           <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium" id="valueBadge">0 檔</span>
         </div>
-        <span class="text-[11px] text-slate-400">同期定期定額 ≥ 0050 且 K值 &lt; 50</span>
+        <span class="text-[11px] text-slate-400">K值 &lt; 50 且 勝0050報酬差 &gt; 10% (保留 0050)</span>
       </div>
       <div id="valueCardsContainer" class="p-3.5 sm:p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <!-- 動態卡片渲染 -->
@@ -341,6 +341,9 @@
     let sortAsc = false;
     let currentViewMode = window.innerWidth < 768 ? 'card' : 'table';
 
+    // 布局價值標的篩選邏輯：K值 < 50 且 評分 = 2 且 (報酬差 > 10% 或 報酬差 = 0 保留0050)
+    const isValueTarget = (d) => d['K值'] < 50 && d['評分'] === 2 && (d['報酬差'] > 0.1 || d['報酬差'] === 0);
+
     // 固定小數位數之千分位格式化
     const formatNum = (val, decimals = 0) => {
       if (val === null || val === undefined || isNaN(val)) return '-';
@@ -431,8 +434,7 @@
     }
 
     function renderKPIsAndCards() {
-      // 條件為 d['報酬差'] >= 0，讓 0050 (報酬差 = 0) 在 K < 50 時也能出現
-      const valueList = rawData.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0);
+      const valueList = rawData.filter(isValueTarget);
       const heatedList = rawData.filter(d => d['K值'] >= 85);
 
       document.getElementById('statTotalCount').innerText = formatNum(rawData.length, 0);
@@ -458,7 +460,7 @@
       if (valueList.length === 0) {
         valueContainer.innerHTML = `
           <div class="col-span-full p-4 sm:p-6 text-center bg-slate-950/50 border border-slate-800 rounded-xl text-slate-500 text-xs">
-            🌿 今日無 K &lt; 50 且勝 0050 之低檔標的，行情多數處於升溫或整理狀態，保持耐性等待回測機會。
+            🌿 今日無符合條件之低檔布局標的，行情多數處於升溫或整理狀態，保持耐性等待回測機會。
           </div>`;
       } else {
         valueContainer.innerHTML = valueList.map(item => {
@@ -567,9 +569,9 @@
         );
       }
 
-      // 2. 標籤篩選 (報酬差 >= 0 納入 0050)
+      // 2. 標籤篩選
       if (currentFilter === 'value') {
-        list = list.filter(d => d['K值'] < 50 && d['評分'] === 2 && d['報酬差'] >= 0);
+        list = list.filter(isValueTarget);
       } else if (currentFilter === 'heated') {
         list = list.filter(d => d['K值'] >= 85);
       } else if (currentFilter === 'score2') {
@@ -633,7 +635,7 @@
 
       // 1. 卡片模式 (套用相較 0050 動態色彩強調)
       cardContainer.innerHTML = list.map(item => {
-        const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0;
+        const isValue = isValueTarget(item);
         const isHeated = item['K值'] >= 85;
         const { avgRetColor, annualColor, winRateColor } = getCompareColors(item);
 
@@ -691,7 +693,7 @@
 
       // 2. 表格模式 (套用相較 0050 動態色彩強調)
       tbody.innerHTML = list.map(item => {
-        const isValue = item['K值'] < 50 && item['評分'] === 2 && item['報酬差'] >= 0;
+        const isValue = isValueTarget(item);
         const isHeated = item['K值'] >= 85;
         const { avgRetColor, annualColor, winRateColor } = getCompareColors(item);
 
