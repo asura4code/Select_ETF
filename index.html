@@ -633,7 +633,7 @@
         return;
       }
 
-      // 1. 卡片模式 (套用相較 0050 動態色彩強調)
+      // 1. 卡片模式 (由左至右顯示：平均報酬率、年化報酬率、月均金額、勝大盤差)
       cardContainer.innerHTML = list.map(item => {
         const isValue = isValueTarget(item);
         const isHeated = item['K值'] >= 85;
@@ -668,18 +668,22 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/60 text-xs">
+            <div class="grid grid-cols-4 gap-1.5 sm:gap-2 pt-2 border-t border-slate-800/60 text-xs">
               <div>
-                <span class="text-[10px] text-slate-500 block">平均報酬率</span>
+                <span class="text-[10px] text-slate-500 block truncate">平均報酬率</span>
                 <span class="font-bold font-mono ${avgRetColor}">${formatNum(item['平均報酬率(%)'], 2)}%</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-500 block">月均金額</span>
+                <span class="text-[10px] text-slate-500 block truncate">年化報酬率</span>
+                <span class="font-bold font-mono ${annualColor}">${formatNum(Math.round(item['年化報酬率']), 0)}%</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-500 block truncate">月均金額</span>
                 <span class="font-bold font-mono text-slate-300">${formatMoney(item['平均成交金額'])}</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-500 block">年化報酬率</span>
-                <span class="font-bold font-mono ${annualColor}">${formatNum(Math.round(item['年化報酬率']), 0)}%</span>
+                <span class="text-[10px] text-slate-500 block truncate">勝大盤差</span>
+                <span class="font-bold font-mono text-slate-300">+${formatNum(item['報酬差'] * 100, 1)}%</span>
               </div>
             </div>
 
