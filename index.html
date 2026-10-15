@@ -92,7 +92,6 @@
         <button onclick="setMainTab('list')" id="mainTab-list" class="flex-1 sm:flex-initial justify-center px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
           <i data-lucide="list-filter" class="w-4 h-4 text-cyan-400"></i>
           <span>候選清單</span>
-          <span id="tabListCount" class="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-950/80 border border-slate-700/80 text-cyan-400 font-mono">--</span>
         </button>
       </div>
     </div>
@@ -196,53 +195,50 @@
             </div>
           </div>
 
-          <!-- 搜尋列與排序控制列 (手機與桌面皆適用) -->
-          <div class="flex flex-col md:flex-row gap-2.5 md:items-center md:justify-between">
-            <!-- 搜尋框 -->
-            <div class="relative w-full md:w-64">
-              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
-              <input type="text" id="searchInput" placeholder="搜尋代號 (如 0050) 或名稱..." 
-                     class="w-full bg-slate-950 border border-slate-700/80 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition">
-            </div>
-
-            <!-- 排序選單與進階篩選切換開關 -->
-            <div class="flex items-center gap-2 flex-wrap">
-              <!-- 卡片與表格通用排序控制器 -->
-              <div class="flex items-center bg-slate-950 px-2 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-300">
-                <i data-lucide="arrow-down-up" class="w-3.5 h-3.5 text-cyan-400 mr-1.5 shrink-0"></i>
-                <span class="text-slate-500 mr-1 hidden sm:inline">排序:</span>
-                <select id="sortSelect" onchange="handleSortSelect(this.value)" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer pr-1">
-                  <option value="平均報酬率(%)" class="bg-slate-900" selected>平均報酬率</option>
-                  <option value="年化報酬率" class="bg-slate-900">年化報酬率</option>
-                  <option value="price" class="bg-slate-900">現價</option>
-                  <option value="K值" class="bg-slate-900">K值</option>
-                  <option value="平均成交金額" class="bg-slate-900">月均金額</option>
-                  <option value="進場次數" class="bg-slate-900">交易次數</option>
-                  <option value="勝率(%)" class="bg-slate-900">勝率</option>
-                  <option value="報酬差" class="bg-slate-900">勝大盤差</option>
-                  <option value="首次加入日期" class="bg-slate-900">入選日</option>
-                  <option value="code" class="bg-slate-900">代號</option>
-                </select>
-                <button id="sortDirectionBtn" onclick="toggleSortDirection()" class="ml-1 p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition flex items-center" title="切換升降冪">
-                  <span id="sortDirectionText" class="text-[10px] font-mono font-semibold text-cyan-400">降冪 ▼</span>
-                </button>
-              </div>
-
-              <!-- 進階篩選按鈕 -->
-              <button onclick="toggleAdvancedFilter()" id="advancedFilterToggleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 hover:text-white transition">
-                <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-cyan-400"></i>
-                <span>進階條件</span>
-                <span id="activeFilterBadge" class="hidden w-2 h-2 rounded-full bg-cyan-400"></span>
-              </button>
-            </div>
+          <!-- 1. 搜尋輸入框 -->
+          <div class="relative w-full sm:w-72">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+            <input type="text" id="searchInput" placeholder="搜尋代號 (如 0050) 或名稱..." 
+                   class="w-full bg-slate-950 border border-slate-700/80 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition">
           </div>
 
-          <!-- 狀態標籤快捷列 -->
+          <!-- 2. 狀態標籤快捷列 (位於搜尋框下方、排序與進階條件按鈕上方) -->
           <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
             <button onclick="setFilter('all')" id="filterBtn-all" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 text-white font-medium transition">全部</button>
             <button onclick="setFilter('value')" id="filterBtn-value" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">🏆 布局價值</button>
             <button onclick="setFilter('heated')" id="filterBtn-heated" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">🔥 位階升溫</button>
             <button onclick="setFilter('score2')" id="filterBtn-score2" class="filter-btn shrink-0 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition">⭐ 勝 0050</button>
+          </div>
+
+          <!-- 3. 欄位排序選單與進階條件按鈕 -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- 卡片與表格通用排序控制器 -->
+            <div class="flex items-center bg-slate-950 px-2 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-300">
+              <i data-lucide="arrow-down-up" class="w-3.5 h-3.5 text-cyan-400 mr-1.5 shrink-0"></i>
+              <span class="text-slate-500 mr-1 hidden sm:inline">排序:</span>
+              <select id="sortSelect" onchange="handleSortSelect(this.value)" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer pr-1">
+                <option value="平均報酬率(%)" class="bg-slate-900" selected>平均報酬率</option>
+                <option value="年化報酬率" class="bg-slate-900">年化報酬率</option>
+                <option value="price" class="bg-slate-900">現價</option>
+                <option value="K值" class="bg-slate-900">K值</option>
+                <option value="平均成交金額" class="bg-slate-900">月均金額</option>
+                <option value="進場次數" class="bg-slate-900">交易次數</option>
+                <option value="勝率(%)" class="bg-slate-900">勝率</option>
+                <option value="報酬差" class="bg-slate-900">勝大盤差</option>
+                <option value="首次加入日期" class="bg-slate-900">入選日</option>
+                <option value="code" class="bg-slate-900">代號</option>
+              </select>
+              <button id="sortDirectionBtn" onclick="toggleSortDirection()" class="ml-1 p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition flex items-center" title="切換升降冪">
+                <span id="sortDirectionText" class="text-[10px] font-mono font-semibold text-cyan-400">降冪 ▼</span>
+              </button>
+            </div>
+
+            <!-- 進階篩選按鈕 -->
+            <button onclick="toggleAdvancedFilter()" id="advancedFilterToggleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 hover:text-white transition">
+              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>進階條件</span>
+              <span id="activeFilterBadge" class="hidden w-2 h-2 rounded-full bg-cyan-400"></span>
+            </button>
           </div>
 
           <!-- 進階條件下拉面板 (可折疊，支援多重過濾) -->
@@ -482,7 +478,6 @@
       const heatedList = rawData.filter(d => d['K值'] >= 85);
 
       document.getElementById('statTotalCount').innerText = formatNum(rawData.length, 0);
-      document.getElementById('tabListCount').innerText = formatNum(rawData.length, 0);
       document.getElementById('statValueCount').innerText = formatNum(valueList.length, 0);
       document.getElementById('statHeatedCount').innerText = formatNum(heatedList.length, 0);
 
