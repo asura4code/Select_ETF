@@ -872,7 +872,7 @@ def send_telegram_message(bot_token, chat_id, message_text, parse_mode='HTML'):
 today_str = dt.datetime.today().strftime('%Y-%m-%d')
 
 # 1. 篩選勝過大盤且位階合理標的
-win_base_df = result[(result['K值'] < k_th) & (result['評分'] == 2) & (result['報酬差'] >= 0.1)].sort_values(
+win_base_df = result[(result['K值'] < k_th) & (result['評分'] == 2) & ((result['報酬差'] >= 0.1) | (result['報酬差'] == 0))].sort_values(
     by=['年化報酬率'], ascending=False
 )
 
