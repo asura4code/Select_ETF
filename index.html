@@ -231,32 +231,32 @@
           <div>
             <label class="block text-[11px] text-slate-400 mb-1">KD 位階</label>
             <select id="filterKD" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
-              <option value="all">全部位階</option>
-              <option value="low">K &lt; 20</option>
-              <option value="mid">20 ≤ K &lt; 40</option>
-              <option value="high">K ≥ 40</option>
+              <option value="all">不限</option>
+              <option value="20">K &lt; 20</option>
+              <option value="30">K &lt; 30</option>
+              <option value="40">K &lt; 40</option>
             </select>
           </div>
 
-          <!-- 2. 勝率門檻 -->
+          <!-- 2. 勝大盤差門檻 -->
           <div>
-            <label class="block text-[11px] text-slate-400 mb-1">回測勝率門檻</label>
-            <select id="filterWinRate" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
-              <option value="all">不限勝率</option>
-              <option value="80">勝率 ≥ 80%</option>
-              <option value="90">勝率 ≥ 90%</option>
-              <option value="100">勝率 100%</option>
+            <label class="block text-[11px] text-slate-400 mb-1">勝大盤差門檻</label>
+            <select id="filterExcessRet" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="all">不限差額</option>
+              <option value="0.2">勝大盤 ≥ +20%</option>
+              <option value="0.5">勝大盤 ≥ +50%</option>
+              <option value="1">勝大盤 ≥ +100%</option>
             </select>
           </div>
 
-          <!-- 3. 年化報酬率門檻 -->
+          <!-- 3. 交易次數門檻 -->
           <div>
-            <label class="block text-[11px] text-slate-400 mb-1">年化報酬率門檻</label>
-            <select id="filterAnnualRet" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
-              <option value="all">不限年化</option>
-              <option value="15">年化 ≥ 15%</option>
-              <option value="30">年化 ≥ 30%</option>
-              <option value="50">年化 ≥ 50%</option>
+            <label class="block text-[11px] text-slate-400 mb-1">交易次數門檻</label>
+            <select id="filterTrades" onchange="renderListAndTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="all">不限次數</option>
+              <option value="100">≥ 100 次</option>
+              <option value="300">≥ 300 次</option>
+              <option value="500">≥ 500 次</option>
             </select>
           </div>
 
@@ -544,12 +544,12 @@
     function getFilteredList() {
       const search = document.getElementById('searchInput').value.trim().toLowerCase();
       const kdFilter = document.getElementById('filterKD').value;
-      const winRateFilter = document.getElementById('filterWinRate').value;
+      const excessRetFilter = document.getElementById('filterExcessRet').value;
+      const tradesFilter = document.getElementById('filterTrades').value;
       const volFilter = document.getElementById('filterVol').value;
-      const retFilter = document.getElementById('filterAnnualRet').value;
 
       // 檢查是否有套用進階條件，動態更新小紅點
-      const hasAdvanced = kdFilter !== 'all' || winRateFilter !== 'all' || volFilter !== 'all' || retFilter !== 'all';
+      const hasAdvanced = kdFilter !== 'all' || excessRetFilter !== 'all' || tradesFilter !== 'all' || volFilter !== 'all';
       const badge = document.getElementById('activeFilterBadge');
       if (hasAdvanced) {
         badge.classList.remove('hidden');
@@ -576,25 +576,22 @@
         list = list.filter(d => d['評分'] === 2);
       }
 
-      // 3. 進階條件 - KD 位階
-      if (kdFilter === 'low') {
-        list = list.filter(d => d['K值'] < 20);
-      } else if (kdFilter === 'mid') {
-        list = list.filter(d => d['K值'] >= 20 && d['K值'] < 40);
-      } else if (kdFilter === 'high') {
-        list = list.filter(d => d['K值'] >= 40);
+      // 3. 進階條件 - KD 位階 (<20, <30, <40)
+      if (kdFilter !== 'all') {
+        const maxKD = Number(kdFilter);
+        list = list.filter(d => d['K值'] < maxKD);
       }
 
-      // 4. 進階條件 - 勝率
-      if (winRateFilter !== 'all') {
-        const minWin = Number(winRateFilter);
-        list = list.filter(d => d['勝率(%)'] >= minWin);
+      // 4. 進階條件 - 勝大盤差
+      if (excessRetFilter !== 'all') {
+        const minExcess = Number(excessRetFilter);
+        list = list.filter(d => d['報酬差'] >= minExcess);
       }
 
-      // 5. 進階條件 - 年化報酬率
-      if (retFilter !== 'all') {
-        const minRet = Number(retFilter);
-        list = list.filter(d => d['年化報酬率'] >= minRet);
+      // 5. 進階條件 - 交易次數
+      if (tradesFilter !== 'all') {
+        const minTrades = Number(tradesFilter);
+        list = list.filter(d => d['進場次數'] >= minTrades);
       }
 
       // 6. 進階條件 - 月均成交金額
@@ -805,8 +802,8 @@
     function resetAllFilters() {
       document.getElementById('searchInput').value = '';
       document.getElementById('filterKD').value = 'all';
-      document.getElementById('filterWinRate').value = 'all';
-      document.getElementById('filterAnnualRet').value = 'all';
+      document.getElementById('filterExcessRet').value = 'all';
+      document.getElementById('filterTrades').value = 'all';
       document.getElementById('filterVol').value = 'all';
       setFilter('all');
     }
