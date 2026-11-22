@@ -181,58 +181,64 @@ def fetch_yahoo_dividends(ticker, start_date="2009-01-01", end_date=None):
     except Exception:
         return {}
 
-def fetch_etf_data(ticker, start_date="2009-01-01", end_date=None):
-  if end_date is None:
-    end_date = (dt.datetime.today() + dt.timedelta(days=1)).strftime("%Y-%m-%d")
+def fetch_etf_data(ticker, start_date="2009-01-01", end_date=None, max_retries=3):
+    if end_date is None:
+        end_date = (dt.datetime.today() + dt.timedelta(days=1)).strftime("%Y-%m-%d")
 
-  # 1. 取得純代號 (0050.TW -> 0050)
-  stock_id = ticker.split(".")[0]
+    stock_id = ticker.split(".")[0]
 
-  try:
-    # 2. FinMind 抓取原始日K
-    df_price = dl.taiwan_stock_daily(
-        stock_id=stock_id, start_date=start_date, end_date=end_date
-    )
-    if df_price is None or df_price.empty or len(df_price) < 20:
-      return None
+    for attempt in range(max_retries):
+        try:
+            # 2. FinMind 抓取原始日K
+            df_price = dl.taiwan_stock_daily(
+                stock_id=stock_id, start_date=start_date, end_date=end_date
+            )
+            if df_price is None or df_price.empty or len(df_price) < 20:
+                time.sleep(0.5)
+                continue
 
-    df_price = df_price.rename(
-        columns={
-            "date": "Date",
-            "open": "Open",
-            "max": "High",
-            "min": "Low",
-            "close": "Close",
-            "Trading_Volume": "Volume",
-            "Trading_money": "Amount",
-        }
-    )
-    df_price["Date"] = pd.to_datetime(df_price["Date"]).dt.strftime("%Y-%m-%d")
-    df_price = df_price.set_index("Date").sort_index()
+            df_price = df_price.rename(
+                columns={
+                    "date": "Date",
+                    "open": "Open",
+                    "max": "High",
+                    "min": "Low",
+                    "close": "Close",
+                    "Trading_Volume": "Volume",
+                    "Trading_money": "Amount",
+                }
+            )
+            df_price["Date"] = pd.to_datetime(df_price["Date"]).dt.strftime("%Y-%m-%d")
+            df_price = df_price.set_index("Date").sort_index()
 
-    # 確保數值型態正確
-    numeric_cols = ["Open", "High", "Low", "Close", "Volume"]
-    for col in numeric_cols:
-      if col in df_price.columns:
-        df_price[col] = pd.to_numeric(df_price[col], errors="coerce")
-    df_price = df_price.dropna(subset=["Close"]).drop_duplicates()
+            # 確保數值型態正確
+            numeric_cols = ["Open", "High", "Low", "Close", "Volume"]
+            for col in numeric_cols:
+                if col in df_price.columns:
+                    df_price[col] = pd.to_numeric(df_price[col], errors="coerce")
+            df_price = df_price.dropna(subset=["Close"]).drop_duplicates()
 
-    # 3. Yahoo Chart API 抓取配息資訊
-    div_map = fetch_yahoo_dividends(
-        ticker, start_date=start_date, end_date=end_date
-    )
-    df_price["Dividend"] = df_price.index.map(div_map).fillna(0.0)
+            # 3. Yahoo Chart API 抓取配息資訊
+            div_map = fetch_yahoo_dividends(
+                ticker, start_date=start_date, end_date=end_date
+            )
+            df_price["Dividend"] = df_price.index.map(div_map).fillna(0.0)
 
-    # 4. 執行分割與反分割還原 (確保 0050、00631L 等歷史走勢連續)
-    df_price = apply_split_adjustment(df_price, ticker)
+            # 4. 執行分割與反分割還原
+            df_price = apply_split_adjustment(df_price, ticker)
 
-    # 5. 剔除特殊休市異常日
-    if "2025-09-29" in df_price.index:
-      df_price = df_price.drop("2025-09-29")
+            # 5. 剔除特殊休市異常日
+            if "2025-09-29" in df_price.index:
+                df_price = df_price.drop("2025-09-29")
 
-    return df_price
+            return df_price
 
-  except Exception:
+        except Exception:
+            if attempt < max_retries - 1:
+                time.sleep(1)
+            else:
+                return None
+
     return None
 
 # 定期定額計算函式 (模擬實際累積股數與配息收入)
@@ -680,7 +686,7 @@ result = result[
     (result["K值"] > 0)
     & (result["勝率(%)"] > 0)
     & (result["平均報酬率(%)"] > 0)
-    # & ((result['報酬差'] >= 0.1) | (result['報酬差'] == 0))
+    & ((result['報酬差'] >= 0.1) | (result['報酬差'] == 0))
 ]
 result["年化報酬率"] = (
     (result["總報酬率(%)"] / 100 + 1) ** (365 / result["總進場期間"]) - 1
@@ -715,95 +721,6 @@ result[["K值"]] = result[["K值"]].astype(float).round(2)
 result[["年化報酬率"]] = (
     result[["年化報酬率"]].replace(0, np.nan).astype(float).round(2)
 )
-
-# 終端機格式化輸出
-if p_result is not None:
-    intersec = result[result["評分"] == 2][["ticker"]].merge(
-        p_result[p_result["評分"] == 2][["ticker"]],
-        how="inner",
-        left_index=True,
-        right_index=True,
-    )
-    insert = result[result["評分"] == 2][
-        result[result["評分"] == 2][["ticker"]]
-        .merge(intersec, how="left", left_index=True, right_index=True)
-        .isna()
-        .any(axis=1)
-    ]
-    remove = p_result[p_result["評分"] == 2][
-        p_result[p_result["評分"] == 2][["ticker"]]
-        .merge(intersec, how="left", left_index=True, right_index=True)
-        .isna()
-        .any(axis=1)
-    ]
-
-    print("[評分2]新增標的：")
-    if len(insert) > 0:
-        # print(
-        #     etf_list.loc[insert.index][
-        #         [
-        #             "ticker",
-        #             "成立以來報酬",
-        #             "同期大盤報酬",
-        #             "累計配息",
-        #             "平均成交金額",
-        #         ]
-        #     ]
-        #     .sort_values(by=["ticker"], ascending=True)
-        #     .to_markdown()
-        # )
-        print(etf_list.loc[insert.index].sort_index().to_markdown())
-    else:
-        print("無新增標的")
-    print("=" * 110)
-
-    print("[評分2]移除標的：")
-    if len(remove) > 0:
-        # print(
-        #     etf_list.loc[remove.index][
-        #         [
-        #             "ticker",
-        #             "成立以來報酬",
-        #             "同期大盤報酬",
-        #             "累計配息",
-        #             "平均成交金額",
-        #         ]
-        #     ]
-        #     .sort_values(by=["ticker"], ascending=True)
-        #     .to_markdown()
-        # )
-        print(etf_list.loc[remove.index].sort_index().to_markdown())
-    else:
-        print("無移除標的")
-    print("=" * 110)
-
-print("位階升溫標的：")
-print(
-    result[(result["K值"] >= 85)][
-        ["ticker", "price", "K值", "勝率(%)", "平均報酬率(%)", "年化報酬率"]
-    ]
-    .sort_values(by=["K值"], ascending=False)
-    .to_markdown()
-)
-print("=" * 110)
-
-print("成立至今績效勝過同期大盤：")
-print(
-    result[(result["K值"] < k_th) & (result["評分"] == 2)][
-        [
-            "ticker",
-            "price",
-            "K值",
-            "勝率(%)",
-            "平均報酬率(%)",
-            "年化報酬率",
-            "首次加入日期",
-        ]
-    ]
-    .sort_values(by=["年化報酬率"], ascending=True)
-    .to_markdown()
-)
-print("=" * 110)
 
 # 存檔輸出
 col_list = [
@@ -872,7 +789,7 @@ def send_telegram_message(bot_token, chat_id, message_text, parse_mode='HTML'):
 today_str = dt.datetime.today().strftime('%Y-%m-%d')
 
 # 1. 篩選勝過大盤且位階合理標的
-win_base_df = result[(result['K值'] < k_th) & (result['評分'] == 2) & ((result['報酬差'] >= 0.1) | (result['報酬差'] == 0))].sort_values(
+win_base_df = result[(result['K值'] < k_th) & (result['評分'] == 2) & (result['報酬差'] >= 0.1)].sort_values(
     by=['年化報酬率'], ascending=False
 )
 
@@ -908,8 +825,8 @@ else:
 lines.append('━━━━━━━━━━━━━━━━━━')
 
 # 區塊二：位階過熱警戒
-lines.append(f'🔥 <b>位階升溫 共 {len(heated_df)} 檔：</b>')
 if len(heated_df) > 0:
+  lines.append(f'🔥 <b>位階升溫 共 {len(heated_df)} 檔：</b>')
   heated_df['年化報酬率_int'] = heated_df['年化報酬率'].astype(int)
   for sym, row in heated_df.iterrows():
     lines.append(
@@ -941,3 +858,9 @@ TG_BOT_TOKEN = os.getenv('TG_BOT_TOKEN')
 TG_CHAT_ID = os.getenv('TG_CHAT_ID')
 
 send_telegram_message(TG_BOT_TOKEN, TG_CHAT_ID, message_html)
+
+#%%
+# ```<FollowUp>
+# - 是否需要協助在回測區間內加入**手續費與證券交易稅**的扣抵試算？
+# - 目前定期定額報酬率以「日定額累積」評估，是否需要提供「月定額（如每月特定日扣款）」的計算模式作交叉比對？
+# - 若需要直接在腳本完成後透過 LINE Notify 或 Telegram Bot 發送每日選股結果推播，我可以為您加上推播模組。
