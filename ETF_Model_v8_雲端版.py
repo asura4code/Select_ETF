@@ -722,6 +722,95 @@ result[["年化報酬率"]] = (
     result[["年化報酬率"]].replace(0, np.nan).astype(float).round(2)
 )
 
+# 終端機格式化輸出
+if p_result is not None:
+    intersec = result[result["評分"] == 2][["ticker"]].merge(
+        p_result[p_result["評分"] == 2][["ticker"]],
+        how="inner",
+        left_index=True,
+        right_index=True,
+    )
+    insert = result[result["評分"] == 2][
+        result[result["評分"] == 2][["ticker"]]
+        .merge(intersec, how="left", left_index=True, right_index=True)
+        .isna()
+        .any(axis=1)
+    ]
+    remove = p_result[p_result["評分"] == 2][
+        p_result[p_result["評分"] == 2][["ticker"]]
+        .merge(intersec, how="left", left_index=True, right_index=True)
+        .isna()
+        .any(axis=1)
+    ]
+
+    # print("[評分2]新增標的：")
+    # if len(insert) > 0:
+        # # print(
+        # #     etf_list.loc[insert.index][
+        # #         [
+        # #             "ticker",
+        # #             "成立以來報酬",
+        # #             "同期大盤報酬",
+        # #             "累計配息",
+        # #             "平均成交金額",
+        # #         ]
+        # #     ]
+        # #     .sort_values(by=["ticker"], ascending=True)
+        # #     .to_markdown()
+        # # )
+        # print(etf_list.loc[insert.index].sort_index().to_markdown())
+    # else:
+        # print("無新增標的")
+    # print("=" * 110)
+
+    # print("[評分2]移除標的：")
+    # if len(remove) > 0:
+        # # print(
+        # #     etf_list.loc[remove.index][
+        # #         [
+        # #             "ticker",
+        # #             "成立以來報酬",
+        # #             "同期大盤報酬",
+        # #             "累計配息",
+        # #             "平均成交金額",
+        # #         ]
+        # #     ]
+        # #     .sort_values(by=["ticker"], ascending=True)
+        # #     .to_markdown()
+        # # )
+        # print(etf_list.loc[remove.index].sort_index().to_markdown())
+    # else:
+        # print("無移除標的")
+    # print("=" * 110)
+
+# print("位階升溫標的：")
+# print(
+    # result[(result["K值"] >= 85)][
+        # ["ticker", "price", "K值", "勝率(%)", "平均報酬率(%)", "年化報酬率"]
+    # ]
+    # .sort_values(by=["K值"], ascending=False)
+    # .to_markdown()
+# )
+# print("=" * 110)
+
+# print("成立至今績效勝過同期大盤：")
+# print(
+    # result[(result["K值"] < k_th) & (result["評分"] == 2)][
+        # [
+            # "ticker",
+            # "price",
+            # "K值",
+            # "勝率(%)",
+            # "平均報酬率(%)",
+            # "年化報酬率",
+            # "首次加入日期",
+        # ]
+    # ]
+    # .sort_values(by=["年化報酬率"], ascending=True)
+    # .to_markdown()
+# )
+# print("=" * 110)
+
 # 存檔輸出
 col_list = [
     "ticker",
